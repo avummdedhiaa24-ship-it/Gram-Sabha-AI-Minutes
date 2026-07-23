@@ -71,13 +71,33 @@ export default function Dashboard() {
 
   if (!mounted) return null;
 
-  // Render subpage content based on route
-  if (activeTab === "meetings") return <MeetingsPage />;
-  if (activeTab === "record") return <RecordPage />;
-  if (activeTab === "verify") return <VerifyPage />;
-  if (activeTab === "chat") return <ChatPage />;
-  if (activeTab === "citizen") return <CitizenPortalPage />;
-  if (activeTab === "audit") return <AuditPage />;
+  const user = getAuthUser();
+  const getRoleAllowedTabs = (role: string): string[] => {
+    switch (role) {
+      case "Citizen":
+        return ["dashboard", "meetings", "chat"];
+      case "Secretary":
+        return ["dashboard", "meetings", "record", "chat"];
+      case "Gram Sabha Moderator":
+        return ["dashboard", "meetings", "verify", "chat"];
+      case "District Officer":
+      case "State Officer":
+        return ["dashboard", "meetings", "audit", "chat"];
+      case "Admin":
+      default:
+        return ["dashboard", "meetings", "record", "verify", "chat", "citizen", "audit"];
+    }
+  };
+
+  const allowedTabs = user ? getRoleAllowedTabs(user.role) : [];
+
+  // Render subpage content based on route with RBAC guard
+  if (activeTab === "meetings" && allowedTabs.includes("meetings")) return <MeetingsPage />;
+  if (activeTab === "record" && allowedTabs.includes("record")) return <RecordPage />;
+  if (activeTab === "verify" && allowedTabs.includes("verify")) return <VerifyPage />;
+  if (activeTab === "chat" && allowedTabs.includes("chat")) return <ChatPage />;
+  if (activeTab === "citizen" && allowedTabs.includes("citizen")) return <CitizenPortalPage />;
+  if (activeTab === "audit" && allowedTabs.includes("audit")) return <AuditPage />;
 
   return <DashboardView />;
 }
@@ -90,6 +110,9 @@ function DashboardView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [recentMeetings, setRecentMeetings] = useState<any[]>([]);
+
+  const user = getAuthUser();
+  const showRecordButton = user?.role === "Secretary" || user?.role === "Admin";
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -185,18 +208,20 @@ function DashboardView() {
           <h2 className="text-2xl font-bold">Namaste! Gram Panchayat Digital Dashboard</h2>
           <p className="text-slate-300 text-sm mt-1">Real-time indicators, digital meeting ledger tracking, and Indic Whisper translation portal.</p>
         </div>
-        <div className="shrink-0 flex space-x-3 relative z-10">
-          <button 
-            onClick={() => {
-              window.history.pushState({}, "", "/record");
-              window.dispatchEvent(new PopStateEvent('popstate'));
-            }}
-            className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl flex items-center shadow-md transition-colors"
-          >
-            Record Live Sabha
-            <ArrowUpRight className="h-3.5 w-3.5 ml-1.5" />
-          </button>
-        </div>
+        {showRecordButton && (
+          <div className="shrink-0 flex space-x-3 relative z-10">
+            <button 
+              onClick={() => {
+                window.history.pushState({}, "", "/record");
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl flex items-center shadow-md transition-colors"
+            >
+              Record Live Sabha
+              <ArrowUpRight className="h-3.5 w-3.5 ml-1.5" />
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
