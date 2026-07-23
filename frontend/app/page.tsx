@@ -42,7 +42,8 @@ import {
   minutesApi, 
   chatApi, 
   searchApi, 
-  auditApi 
+  auditApi,
+  translationApi
 } from "./lib/api";
 
 // Helper to access token and user locally
@@ -1032,6 +1033,49 @@ function VerifyPage() {
   const [schemesStr, setSchemesStr] = useState("");
   const [budgetStr, setBudgetStr] = useState("");
 
+  // Translation states
+  const [translationLanguage, setTranslationLanguage] = useState("original");
+  const [translationData, setTranslationData] = useState<any>(null);
+  const [translationLoading, setTranslationLoading] = useState(false);
+
+  const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const lang = e.target.value;
+    setTranslationLanguage(lang);
+    setSuccess("");
+    setError("");
+
+    if (lang === "original") {
+      setTranslationData(null);
+      return;
+    }
+
+    if (!selectedMeetingId) return;
+
+    const meetingId = parseInt(selectedMeetingId);
+    const token = getAuthToken();
+    setTranslationLoading(true);
+
+    try {
+      // 1. Try to get existing translation
+      const data = await translationApi.get(meetingId, lang, token);
+      setTranslationData(data);
+    } catch (err: any) {
+      try {
+        // 2. Trigger translation generation if not found
+        setSuccess(`Translating content into ${lang === "hi" ? "Hindi" : lang === "mr" ? "Marathi" : lang === "te" ? "Telugu" : "English"}...`);
+        const generated = await translationApi.generate(meetingId, lang, token);
+        setTranslationData(generated);
+        setSuccess("Translation generated successfully!");
+      } catch (genErr: any) {
+        setError(genErr.message || "Failed to generate translation.");
+        setTranslationLanguage("original");
+        setTranslationData(null);
+      }
+    } finally {
+      setTranslationLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadDrafts();
   }, []);
@@ -1057,6 +1101,8 @@ function VerifyPage() {
     setLoading(true);
     setError("");
     setSuccess("");
+    setTranslationLanguage("original");
+    setTranslationData(null);
     try {
       const detail = await meetingsApi.get(meetingId, token);
       setMeetingDetail(detail);
@@ -1136,19 +1182,41 @@ function VerifyPage() {
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Audit draft resolutions, edit budget items, and seal with SHA256 cryptographic logs.</p>
         </div>
 
-        {/* Meeting selector dropdown */}
-        <div className="flex items-center space-x-2">
-          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Sabha Drafts:</label>
-          <select 
-            value={selectedMeetingId}
-            onChange={handleMeetingSelect}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
-          >
-            {draftMeetings.map((d) => (
-              <option key={d.id} value={d.id}>{d.title} ({d.status})</option>
-            ))}
-            {draftMeetings.length === 0 && <option value="">No draft meetings found</option>}
-          </select>
+        {/* Selectors container */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Meeting selector dropdown */}
+          <div className="flex items-center space-x-2">
+            <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Sabha Drafts:</label>
+            <select 
+              value={selectedMeetingId}
+              onChange={handleMeetingSelect}
+              className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none font-bold"
+            >
+              {draftMeetings.map((d) => (
+                <option key={d.id} value={d.id}>{d.title} ({d.status})</option>
+              ))}
+              {draftMeetings.length === 0 && <option value="">No draft meetings found</option>}
+            </select>
+          </div>
+
+          {/* Translation selector dropdown */}
+          {minutesData && (
+            <div className="flex items-center space-x-2">
+              <label className="text-xs font-bold text-slate-500 dark:text-slate-400">Translate to:</label>
+              <select 
+                value={translationLanguage}
+                onChange={handleLanguageChange}
+                disabled={translationLoading}
+                className="bg-slate-105 dark:bg-slate-800 border border-slate-250 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-indigo-750 dark:text-indigo-400 disabled:opacity-50"
+              >
+                <option value="original">Original (Auto-detected)</option>
+                <option value="hi">Hindi (हिंदी)</option>
+                <option value="mr">Marathi (मराठी)</option>
+                <option value="te">Telugu (తెలుగు)</option>
+                <option value="en">English (English)</option>
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1179,7 +1247,23 @@ function VerifyPage() {
               <FileText className="h-4.5 w-4.5 mr-2 text-indigo-500" />
               ASR Transcript Logs
             </h3>
-            {meetingDetail?.transcripts ? (
+            {translationLanguage !== "original" && translationData ? (
+              <div className="space-y-4 font-sans text-xs">
+                {translationData.transcript_translated_json && translationData.transcript_translated_json.length > 0 ? (
+                  translationData.transcript_translated_json.map((seg: any, index: number) => (
+                    <div key={index} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-3 rounded-xl shadow-sm">
+                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold mb-1">
+                        <span className="text-indigo-600 dark:text-indigo-400">{seg.speaker}</span>
+                        <span>{seg.start}s - {seg.end}s</span>
+                      </div>
+                      <p className="text-slate-650 dark:text-slate-300 font-medium leading-relaxed">{seg.text}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-slate-400 font-semibold italic">No translated transcript segments found.</p>
+                )}
+              </div>
+            ) : meetingDetail?.transcripts ? (
               <div className="space-y-4 font-sans text-xs">
                 {meetingDetail.transcripts.diarized_json ? (
                   meetingDetail.transcripts.diarized_json.map((seg: any, index: number) => (
@@ -1217,11 +1301,13 @@ function VerifyPage() {
 
             <div className="space-y-4 flex-1">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Executive Summary</label>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
+                  {translationLanguage !== "original" ? `Translated Executive Summary (${translationLanguage})` : "Executive Summary"}
+                </label>
                 <textarea 
-                  value={summary}
+                  value={translationLanguage !== "original" && translationData ? translationData.minutes_summary : summary}
                   onChange={(e) => setSummary(e.target.value)}
-                  disabled={!!minutesData.digital_hash}
+                  disabled={!!minutesData.digital_hash || translationLanguage !== "original"}
                   rows={4}
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none font-medium leading-relaxed disabled:opacity-75"
                 />
@@ -1233,7 +1319,7 @@ function VerifyPage() {
                   <textarea 
                     value={topicsStr}
                     onChange={(e) => setTopicsStr(e.target.value)}
-                    disabled={!!minutesData.digital_hash}
+                    disabled={!!minutesData.digital_hash || translationLanguage !== "original"}
                     rows={4}
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-[10px] font-mono focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-75"
                   />
@@ -1243,7 +1329,7 @@ function VerifyPage() {
                   <textarea 
                     value={schemesStr}
                     onChange={(e) => setSchemesStr(e.target.value)}
-                    disabled={!!minutesData.digital_hash}
+                    disabled={!!minutesData.digital_hash || translationLanguage !== "original"}
                     rows={4}
                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-[10px] font-mono focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-75"
                   />
@@ -1255,7 +1341,7 @@ function VerifyPage() {
                 <textarea 
                   value={budgetStr}
                   onChange={(e) => setBudgetStr(e.target.value)}
-                  disabled={!!minutesData.digital_hash}
+                  disabled={!!minutesData.digital_hash || translationLanguage !== "original"}
                   rows={4}
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-[10px] font-mono focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-75"
                 />
@@ -1288,22 +1374,30 @@ function VerifyPage() {
 
             {/* Actions Buttons */}
             {!minutesData.digital_hash && (
-              <div className="flex gap-4 border-t border-slate-100 dark:border-slate-850 pt-4">
-                <button
-                  onClick={handleSave}
-                  disabled={saveLoading || finalizeLoading}
-                  className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white rounded-xl text-xs font-bold transition-all"
-                >
-                  {saveLoading ? "Saving..." : "Save Draft Changes"}
-                </button>
-                <button
-                  onClick={handleFinalize}
-                  disabled={saveLoading || finalizeLoading}
-                  className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-md hover:shadow-emerald-650/15 transition-all"
-                >
-                  <Lock className="h-3.5 w-3.5" /> Sign & Finalize Ledger
-                </button>
-              </div>
+              translationLanguage !== "original" ? (
+                <div className="bg-amber-500/10 border border-amber-500/25 p-3 rounded-xl text-center">
+                  <span className="text-[10.5px] text-amber-700 dark:text-amber-400 font-bold">
+                    You are in Translation View. Switch back to "Original" to save edits or finalize minutes.
+                  </span>
+                </div>
+              ) : (
+                <div className="flex gap-4 border-t border-slate-100 dark:border-slate-850 pt-4">
+                  <button
+                    onClick={handleSave}
+                    disabled={saveLoading || finalizeLoading}
+                    className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white rounded-xl text-xs font-bold transition-all"
+                  >
+                    {saveLoading ? "Saving..." : "Save Draft Changes"}
+                  </button>
+                  <button
+                    onClick={handleFinalize}
+                    disabled={saveLoading || finalizeLoading}
+                    className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-md hover:shadow-emerald-650/15 transition-all"
+                  >
+                    <Lock className="h-3.5 w-3.5" /> Sign & Finalize Ledger
+                  </button>
+                </div>
+              )
             )}
           </div>
         </div>
@@ -1478,6 +1572,12 @@ function CitizenPortalPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Translation options for citizen
+  const [selectedLanguage, setSelectedLanguage] = useState("original");
+  const [expandedMeetingId, setExpandedMeetingId] = useState<number | null>(null);
+  const [expandedTranslation, setExpandedTranslation] = useState("");
+  const [expandedLoading, setExpandedLoading] = useState(false);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchWord.trim()) return;
@@ -1485,6 +1585,8 @@ function CitizenPortalPage() {
     const token = getAuthToken();
     setLoading(true);
     setError("");
+    setExpandedMeetingId(null);
+    setExpandedTranslation("");
     try {
       const data = await searchApi.search(searchWord, token);
       setResults(data);
@@ -1495,11 +1597,58 @@ function CitizenPortalPage() {
     }
   };
 
+  const handleExpandTranslation = async (meetingId: number, langCode: string) => {
+    if (expandedMeetingId === meetingId) {
+      setExpandedMeetingId(null);
+      setExpandedTranslation("");
+      return;
+    }
+    setExpandedMeetingId(meetingId);
+    setExpandedLoading(true);
+    setExpandedTranslation("");
+    const token = getAuthToken();
+    try {
+      let data;
+      try {
+        data = await translationApi.get(meetingId, langCode, token);
+      } catch {
+        data = await translationApi.generate(meetingId, langCode, token);
+      }
+      setExpandedTranslation(data.minutes_summary || "No translated summary found.");
+    } catch (err: any) {
+      setExpandedTranslation("Failed to fetch translation: " + err.message);
+    } finally {
+      setExpandedLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fadeIn">
-      <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
-        <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Citizen Portal (Public Semantic Search)</h2>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Audit resolutions index, open data files, and RTI transparency logs.</p>
+      <div className="border-b border-slate-200 dark:border-slate-800 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Citizen Portal (Public Semantic Search)</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Audit resolutions index, open data files, and RTI transparency logs.</p>
+        </div>
+
+        {/* Language selector for citizen view */}
+        <div className="flex items-center space-x-2">
+          <label className="text-xs font-bold text-slate-500 dark:text-slate-400">View Language:</label>
+          <select 
+            value={selectedLanguage}
+            onChange={(e) => {
+              setSelectedLanguage(e.target.value);
+              setExpandedMeetingId(null);
+              setExpandedTranslation("");
+            }}
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-indigo-700 dark:text-indigo-400"
+          >
+            <option value="original">Original (Default)</option>
+            <option value="hi">Hindi (हिंदी)</option>
+            <option value="mr">Marathi (मराठी)</option>
+            <option value="te">Telugu (తెలుగు)</option>
+            <option value="en">English (English)</option>
+          </select>
+        </div>
       </div>
 
       {error && (
@@ -1542,19 +1691,53 @@ function CitizenPortalPage() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               {results.map((res, index) => (
-                <tr key={index} className="hover:bg-slate-55/20">
-                  <td className="py-4 font-bold text-slate-800 dark:text-slate-150">Topic index Match</td>
-                  <td className="py-4 text-slate-600 font-bold">{res.title} (ID: {res.meeting_id})</td>
-                  <td className="py-4 text-slate-500 italic max-w-sm">"...{res.text_segment}..."</td>
-                  <td className="py-4 text-slate-400">{res.date}</td>
-                  <td className="py-4">
-                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                      res.status === "approved" ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
-                    }`}>
-                      {res.status}
-                    </span>
-                  </td>
-                </tr>
+                <React.Fragment key={index}>
+                  <tr className="hover:bg-slate-55/20">
+                    <td className="py-4 font-bold text-slate-800 dark:text-slate-150">Topic Index Match</td>
+                    <td className="py-4 text-slate-600 font-bold">{res.title} (ID: {res.meeting_id})</td>
+                    <td className="py-4 text-slate-500 italic max-w-sm">"...{res.text_segment}..."</td>
+                    <td className="py-4 text-slate-400">{res.date}</td>
+                    <td className="py-4">
+                      <div className="flex flex-col space-y-1 items-start">
+                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                          res.status === "approved" ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"
+                        }`}>
+                          {res.status}
+                        </span>
+                        {selectedLanguage !== "original" && (
+                          <button
+                            type="button"
+                            onClick={() => handleExpandTranslation(res.meeting_id, selectedLanguage)}
+                            className="text-[10px] text-indigo-600 dark:text-indigo-400 hover:underline font-bold mt-1.5 focus:outline-none"
+                          >
+                            {expandedMeetingId === res.meeting_id ? "Hide translation" : `Translate Summary`}
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {expandedMeetingId === res.meeting_id && (
+                    <tr className="bg-indigo-50/20 dark:bg-indigo-950/5">
+                      <td colSpan={5} className="py-3 px-4 border-t border-b border-indigo-100/50 dark:border-indigo-900/25">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                            Translated Executive Summary ({selectedLanguage === "hi" ? "Hindi" : selectedLanguage === "mr" ? "Marathi" : selectedLanguage === "te" ? "Telugu" : "English"})
+                          </span>
+                          {expandedLoading ? (
+                            <div className="flex items-center space-x-2 py-2">
+                              <Loader2 className="h-3.5 w-3.5 text-indigo-600 animate-spin" />
+                              <span className="text-xs font-medium text-slate-400">Generating dynamic translation from e-ledger...</span>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-700 dark:text-slate-300 font-medium leading-relaxed whitespace-pre-wrap py-1.5">
+                              {expandedTranslation}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
               {results.length === 0 && (
                 <tr>

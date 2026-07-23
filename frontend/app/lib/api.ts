@@ -164,3 +164,13 @@ export const analyticsApi = {
     return apiRequest("/analytics/dashboard", "GET", null, token);
   },
 };
+
+// Translation Services
+export const translationApi = {
+  get: (meetingId: number, langCode: string, token?: string | null) => {
+    return apiRequest(`/translation/${meetingId}/${langCode}`, "GET", null, token);
+  },
+  generate: (meetingId: number, langCode: string, token?: string | null) => {
+    return apiRequest(`/translation/${meetingId}/${langCode}`, "POST", null, token);
+  },
+};
