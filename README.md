@@ -58,6 +58,15 @@ graph TD
 5. **Cryptographic SHA256 Ledger**: Finalizing minutes locks the state, computes a SHA256 digital signature hash, and writes an immutable record in the audit trail table.
 6. **RAG Semantic Search Chatbot**: Employs Sentence Transformers and local similarity indexes to fetch past resolutions with citation details and confidence rankings.
 7. **e-Panchayat Analytics Dashboard**: Beautiful visual metrics using Recharts displaying gender and SC/ST representation percentage, speaking time distribution, and budget splits.
+8. **Multilingual Translation Integration**: Translate meeting summaries and transcript logs on-demand into Hindi (हिंदी), Marathi (मराठी), Telugu (తెలుగు), and English. Offers side-by-side translations in both the Moderator sign-off view and the public search registry.
+
+---
+
+## Recent Platform Enhancements
+
+* **Strict Route Guards**: Integrated component-level role verification checking (RBAC) to block unauthorized navigation (e.g. restricting live recording views and dashboard quick-actions solely to Secretaries and Admins).
+* **Class-Based Dark/Light Mode**: Bound theme toggling state to Tailwind's `class` dark mode engine, enabling instant dark-palette adjustments across all modules.
+* **Layout Overflow Control**: Fixed scroll tracking behaviors in global CSS to prevent scrolling lockouts on smaller device resolutions.
 
 ---
 
