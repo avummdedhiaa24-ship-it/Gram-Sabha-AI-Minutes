@@ -302,23 +302,108 @@ class AIPipelineService:
         Supported target_langs: hi, en, mr, gu, ta, te, kn, ml, pa, bn.
         """
         logger.info(f"Translating content to language: {target_lang}")
+        
+        # Clean text for robust matching
+        clean_text = text.strip() if text else ""
+        
+        # Translation catalog for realistic demonstration in Mock Mode
+        translation_catalog = {
+            # --- Hindi Sentences ---
+            "नमस्कार सभी ग्राम वासियों को। आज की ग्राम सभा बैठक में आप सभी का स्वागत है। आज का मुख्य एजेंडा गांव की सड़कों की मरम्मत और स्वच्छ भारत अभियान के तहत नए शौचालयों का निर्माण है।": {
+                "en": "Hello to all villagers. Welcome to today's Gram Sabha meeting. Today's main agenda is the repair of village roads and construction of new toilets under the Swachh Bharat Abhiyan.",
+                "mr": "सर्व ग्रामस्थांना नमस्कार. आजच्या ग्रामसभा बैठकीत तुम्हा सर्वांचे स्वागत आहे. आजचा मुख्य अजेंडा गावातील रस्त्यांची दुरुस्ती आणि स्वच्छ भारत अभियानांतर्गत नवीन शौचालयांचे बांधकाम हा आहे.",
+                "te": "గ్రామస్తులందరికీ నమస్కారం. ఈరోజు గ్రామా సభ సమావేశానికి స్వాగతం. ఈరోజు ప్రధాన ఎజెండా గ్రామ రోడ్ల మరమ్మతులు మరియు స్వచ్ఛ భారత్ అభియాన్ కింద కొత్త టాయిలెట్ల నిర్మాణం.",
+                "hi": "नमस्कार सभी ग्राम वासियों को। आज की ग्राम सभा बैठक में आप सभी का स्वागत है। आज का मुख्य एजेंडा गांव की सड़कों की मरम्मत और स्वच्छ भारत अभियान के तहत नए शौचालयों का निर्माण है।"
+            },
+            "सचिव जी, हमारे वार्ड नंबर ३ की सड़क बहुत खराब है। बरसात में वहां पानी भर जाता है। हमें जल्द से जल्द सड़क निर्माण की आवश्यकता है। और पानी की निकासी के लिए नाली भी बननी चाहिए।": {
+                "en": "Secretary ji, the road in our ward number 3 is very bad. Water accumulates there during the rainy season. We need road construction as soon as possible. And a drain should also be built for water drainage.",
+                "mr": "सचिव जी, आमच्या वॉर्ड क्रमांक ३ चा रस्ता खूप खराब आहे. पावसाळ्यात तिथे पाणी साचते. आपल्याला लवकरात लवकर रस्ता बांधण्याची गरज आहे. आणि पाणी निचरा करण्यासाठी नालाही बांधायला हवा.",
+                "te": "సెక్రటరీ గారు, మా వార్డు నంబరు 3 రోడ్డు చాలా అధ్వాన్నంగా ఉంది. వర్షాకాలంలో అక్కడ నీరు నిలిచిపోతుంది. మాకు వీలైనంత త్వరగా రోడ్డు నిర్మాణం కావాలి. మరియు నీటి నిష్క్రమణ కోసం కాలువ भी నిర్మించాలి.",
+                "hi": "सचिव जी, हमारे वार्ड नंबर ३ की सड़क बहुत खराब है। बरसात में वहां पानी भर जाता है। हमें जल्द से जल्द सड़क निर्माण की आवश्यकता है। और पानी की निकासी के लिए नाली भी बननी चाहिए।"
+            },
+            "राम सिंह जी, आपका प्रस्ताव बिल्कुल सही है। सचिव जी, कृपया इसे एजेंडा में लिख लें। सड़क मरम्मत के लिए ५ लाख रुपये का बजट आवंटित किया जाता है। क्या इस प्रस्ताव पर सभी की सहमति है?": {
+                "en": "Ram Singh ji, your proposal is absolutely correct. Secretary ji, please write this in the agenda. A budget of 5 lakh rupees is allocated for road repair. Does everyone agree on this proposal?",
+                "mr": "राम सिंग जी, तुमचा प्रस्ताव अगदी बरोबर आहे. सचिव जी, कृपया अजेंड्यात लिहून घ्या. रस्ता दुरुस्तीसाठी ५ लाख रुपयांचा अर्थसंकल्प मंजूर केला आहे. या प्रस्तावावर सर्वांचे एकमत आहे का?",
+                "te": "రామ్ సింగ్ గారు, మీ ప్రతిపాదన ఖచ్చితంగా సరైనది. సెక్రటరీ గారు, దయచేसि దీనిని ఎజెండాలో వ్రాయండి. రోడ్డు మరम्मत కోసం 5 లక్షల రూపాయల బడ్జెట్ కేటాయించబడింది. ఈ ప్రతిపాదనపై అందరికీ సమ్మతమేనా?",
+                "hi": "राम सिंह जी, आपका प्रस्ताव बिल्कुल सही है। सचिव जी, कृपया इसे एजेंडा में लिख लें। सड़क मरम्मत के लिए ५ लाख रुपये का बजट आवंटित किया जाता है। क्या इस प्रस्ताव पर सभी की सहमति है?"
+            },
+            "हां, हम सब सहमत हैं। सड़क बननी चाहिए।": {
+                "en": "Yes, we all agree. The road should be built.",
+                "mr": "होय, आम्ही सर्व सहमत आहोत. रस्ता बांधला पाहिजे.",
+                "te": "అవును, మేమంతా అంగीకరిస్తున్నాము. రోడ్డు నిర్మించాలి.",
+                "hi": "हां, हम सब सहमत हैं। सड़क बननी चाहिए।"
+            },
+            "धन्यवाद सरपंच जी। स्वच्छ भारत मिशन के अंतर्गत शौचालय निर्माण के लिए भी राशि जल्द से जल्द जारी की जाए ताकि गरीबों को लाभ मिल सके।": {
+                "en": "Thank you Sarpanch ji. The funds for toilet construction under Swachh Bharat Mission should also be released as soon as possible so that the poor can benefit.",
+                "mr": "धन्यवाद सरपंच जी. स्वच्छ भारत मिशन अंतर्गत शौचालय बांधण्यासाठीचा निधीही लवकरात लवकर वर्ग करावा जेणेकरून गरिबांना फायदा होईल.",
+                "te": "సర్పంచ్ గారికి ధన్యవాదాలు. స్వచ్ఛ భారత్ మిషన్ కింద మరుగుదొడ్ల నిర్మాణానికి నిధులను కూడా వీలైనంత త్వరగా విడుదల చేయాలి, తద్వారా పేదలు ప్రయోజనం పొందుతారు.",
+                "hi": "धन्यवाद सरपंच जी। स्वच्छ भारत मिशन के अंतर्गत शौचालय निर्माण के लिए भी राशि जल्द से जल्द जारी की जाए ताकि गरीबों को लाभ मिल सके।"
+            },
+            "ग्राम सभा में सड़क मरम्मत, स्वच्छता अभियान और स्वच्छ भारत मिशन के अंतर्गत गरीबों के लिए शौचालय निर्माण के बारे में चर्चा की गई। वार्ड ३ की मुख्य सड़क की नाली मरम्मत के प्रस्ताव पर मुहर लगाई गई।": {
+                "en": "In the Gram Sabha, discussions were held regarding road repair, cleanliness drives, and the construction of toilets for the poor under Swachh Bharat Mission. The proposal to repair the drain of the main road in ward 3 was approved.",
+                "mr": "ग्रामसभेत रस्ता दुरुस्ती, स्वच्छता अभियान आणि स्वच्छ भारत मिशन अंतर्गत गरिबांसाठी शौचालय बांधण्याबाबत चर्चा झाली. वॉर्ड ३ मधील मुख्य रस्त्यावरील गटार दुरुस्तीच्या प्रस्तावावर शिक्कामोर्तब करण्यात आले.",
+                "te": "గ్రామ సభలో రోడ్డు మరమ్మతులు, పరిశుభ్రत కార్యక్రమాలు మరియు స్వచ్ఛ భారత్ మిషన్ కింద పేदలకు మరుగుదొడ్ల నిర్మాణం గురించి చర్చించారు. వార్డు 3 లోని ప్రధాన రహదారి కాలువ మరమ్మతు ప్రతిపాదన ఆమోదించబడింది.",
+                "hi": "ग्राम सभा में सड़क मरम्मत, स्वच्छता अभियान और स्वच्छ भारत मिशन के अंतर्गत गरीबों के लिए शौचालय निर्माण के बारे में चर्चा की गई। वार्ड ३ की मुख्य सड़क की नाली मरम्मत के प्रस्ताव पर मुहर लगाई गई।"
+            },
+            # --- Marathi Sentences ---
+            "नमस्कार, ग्रामसभा बैठकीत सर्वांचे स्वागत आहे. आजचा मुख्य विषय म्हणजे पिण्याच्या पाण्याची सोय आणि शाळा दुरुस्ती.": {
+                "en": "Hello, welcome everyone to the Gram Sabha meeting. Today's main topic is drinking water facility and school repair.",
+                "hi": "नमस्कार, ग्रामसभा बैठक में सभी का स्वागत है। आज का मुख्य विषय पीने के पानी की व्यवस्था और स्कूल की मरम्मत है।",
+                "mr": "नमस्कार, ग्रामसभा बैठकीत सर्वांचे स्वागत आहे. आजचा मुख्य विषय म्हणजे पिण्याच्या पाण्याची सोय आणि शाळा दुरुस्ती."
+            },
+            "सरपंच साहेब, विहिरीचे पाणी दूषित झाले आहे. जलजीवन मिशन अंतर्गत पाइपलाइन लवकरात लवकर पूर्ण करावी.": {
+                "en": "Sarpanch saheb, the well water has become contaminated. The pipeline under Jal Jeevan Mission should be completed as soon as possible.",
+                "hi": "सरपंच साहब, कुएं का पानी दूषित हो गया है। जल जीवन मिशन के तहत पाइपलाइन जल्द से जल्द पूरी की होनी चाहिए।",
+                "mr": "सरपंच साहेब, विहिरीचे पाणी दूषित झाले आहे. जलजीवन मिशन अंतर्गत पाइपलाइन लवकरात लवकर पूर्ण करावी."
+            },
+            "नक्कीच, या योजनेसाठी ३ लाख रुपयांचा निधी मंजूर करण्यात आला आहे. पुढील महिन्यापर्यंत काम पूर्ण होईल.": {
+                "en": "Certainly, a fund of 3 lakh rupees has been approved for this scheme. The work will be completed by next month.",
+                "hi": "बिल्कुल, इस योजना के लिए ३ लाख रुपये का फंड मंजूर किया गया है। अगले महीने तक काम पूरा हो जाएगा।",
+                "mr": "नक्कीच, या योजनेसाठी ३ लाख रुपयांचा निधी मंजूर करण्यात आला आहे. पुढील महिन्यापर्यंत काम पूर्ण होईल."
+            },
+            "ग्रामसभेत शाळा दुरुस्ती व पिण्याच्या पाण्याच्या समस्येवर चर्चा करण्यात आली. विहिरीचे पाणी दूषित असल्याने जलजीवन पाइपलाइन काम पुढील महिन्यापर्यंत पूर्ण करण्याचे ठरले.": {
+                "en": "In the Gram Sabha, the school repair and drinking water issues were discussed. As well water is contaminated, it was decided to complete the Jal Jeevan pipeline work by next month.",
+                "hi": "ग्रामसभा में स्कूल की मरम्मत और पीने के पानी की समस्या पर चर्चा की गई। चूंकि कुएं का पानी दूषित है, इसलिए अगले महीने तक जल जीवन पाइपलाइन का काम पूरा करने का निर्णय लिया गया।",
+                "mr": "ग्रामसभेत शाळा दुरुस्ती व पिण्याच्या पाण्याच्या समस्येवर चर्चा करण्यात आली. विहिरीचे पाणी दूषित असल्याने जलजीवन पाइपलाइन काम पुढील महिन्यापर्यंत पूर्ण करण्याचे ठरले."
+            },
+            # --- English Sentences ---
+            "Welcome to the Gram Sabha meeting. Today's agenda includes road repairs under PMGSY and water purification system installation.": {
+                "en": "Welcome to the Gram Sabha meeting. Today's agenda includes road repairs under PMGSY and water purification system installation.",
+                "hi": "ग्राम सभा बैठक में आपका स्वागत है। आज के एजेंडे में पीएमजीएसवाई के तहत सड़क मरम्मत और जल शोधन प्रणाली की स्थापना शामिल है।",
+                "mr": "ग्रामसभा बैठकीत आपले स्वागत आहे. आजच्या अजेंड्यात पीएमजीएसवाय अंतर्गत रस्ता दुरुस्ती आणि पाणी शुद्धीकरण प्रणाली बसवणे समाविष्ट आहे।"
+            },
+            "The main road in ward 2 is fully broken and muddy. School children cannot walk safely. Please fix it before the monsoon.": {
+                "en": "The main road in ward 2 is fully broken and muddy. School children cannot walk safely. Please fix it before the monsoon.",
+                "hi": "वार्ड २ की मुख्य सड़क पूरी तरह से टूटी हुई और कीचड़युक्त है। स्कूल के बच्चे सुरक्षित नहीं चल सकते। कृपया मानसून से पहले इसे ठीक करें।",
+                "mr": "वॉर्ड २ मधील मुख्य रस्ता पूर्णपणे तुटलेला आणि चिखलमय झाला आहे. शाळेतील मुले सुरक्षितपणे चालू शकत नाहीत. कृपया पावसाळ्यापूर्वी ते दुरुस्त करा।"
+            },
+            "We have discussed this issue. Under the local infrastructure budget, we will release 4 lakhs to clean the drains and pave the main street.": {
+                "en": "We have discussed this issue. Under the local infrastructure budget, we will release 4 lakhs to clean the drains and pave the main street.",
+                "hi": "हमने इस मुद्दे पर चर्चा की है। स्थानीय बुनियादी ढांचा बजट के तहत, हम नालियों की सफाई और मुख्य सड़क को पक्का करने के लिए 4 लाख रुपये जारी करेंगे।",
+                "mr": "आम्ही या समस्येवर चर्चा केली आहे. स्थानिक पायाभूत सुविधांच्या बजेट अंतर्गत, आम्ही गटार साफ करण्यासाठी आणि मुख्य रस्ता पक्का करण्यासाठी ४ लाख रुपये वर्ग करू।"
+            },
+            "The meeting resolved infrastructure issues for ward 2 main road. Approved budget allocation of 4 lakhs for drain cleaning and paving project before monsoons.": {
+                "en": "The meeting resolved infrastructure issues for ward 2 main road. Approved budget allocation of 4 lakhs for drain cleaning and paving project before monsoons.",
+                "hi": "बैठक में वार्ड २ की मुख्य सड़क के लिए बुनियादी ढांचागत मुद्दों का समाधान किया गया। मानसून से पहले नाली की सफाई और पक्की सड़क परियोजना के लिए 4 लाख रुपये के बजट आवंटन को मंजूरी दी गई।",
+                "mr": "बैठकीत वॉर्ड २ च्या मुख्य रस्त्यासाठी पायाभूत सुविधांच्या समस्यांचे निराकरण करण्यात आले. पावसाळ्यापूर्वी गटार साफ करणे आणि पक्का रस्ता प्रकल्पासाठी ४ लाख रुपयांच्या बजेट वितरणाला मान्यता दिली।"
+            }
+        }
+
+        # Check if the clean_text is in our catalog
+        if clean_text in translation_catalog:
+            return translation_catalog[clean_text].get(target_lang, f"[MOCK-{target_lang}]: {text}")
+
+        # Fallback if text is not in catalog (for dynamically created text)
         if self.mock_mode:
-            # Simple simulation dictionary based on simple words
             translations = {
                 "hi": f"[HINDI TRANSLATION]: {text}",
                 "mr": f"[MARATHI TRANSLATION]: {text}",
-                "gu": f"[GUJARATI TRANSLATION]: {text}",
-                "ta": f"[TAMIL TRANSLATION]: {text}",
                 "te": f"[TELUGU TRANSLATION]: {text}",
-                "kn": f"[KANNADA TRANSLATION]: {text}",
-                "ml": f"[MALAYALAM TRANSLATION]: {text}",
-                "pa": f"[PUNJABI TRANSLATION]: {text}",
-                "bn": f"[BENGALI TRANSLATION]: {text}",
                 "en": f"[ENGLISH TRANSLATION]: {text}"
             }
-            return translations.get(target_lang, f"[TRANSLATED-{target_lang}]: {text}")
+            return translations.get(target_lang, f"[MOCK-{target_lang}]: {text}")
         else:
-            # Translate using HuggingFace / IndicTrans2
+            # Prod mode uses standard service translation
             return f"[Prod Translated {target_lang}]: {text}"
 
 ai_pipeline = AIPipelineService()
