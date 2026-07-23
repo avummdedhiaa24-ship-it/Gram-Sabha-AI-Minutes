@@ -1,0 +1,49 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+import os
+
+from app.core.config import settings
+from app.core.database import engine, Base
+from app.routers import auth, meetings, attendance, audio, minutes, translation, chat, search, analytics, audit
+
+# Initialize database schemas
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    description="Automating documentation, e-governance minutes, translation, and RAG semantic search for Gram Sabha meetings.",
+    version="1.0.0",
+)
+
+# CORS configurations
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For development; configure restrictive origins in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Register routers
+app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(meetings.router, prefix=settings.API_V1_STR)
+app.include_router(attendance.router, prefix=settings.API_V1_STR)
+app.include_router(audio.router, prefix=settings.API_V1_STR)
+app.include_router(minutes.router, prefix=settings.API_V1_STR)
+app.include_router(translation.router, prefix=settings.API_V1_STR)
+app.include_router(chat.router, prefix=settings.API_V1_STR)
+app.include_router(search.router, prefix=settings.API_V1_STR)
+app.include_router(analytics.router, prefix=settings.API_V1_STR)
+app.include_router(audit.router, prefix=settings.API_V1_STR)
+
+@app.get("/health", tags=["System Health"])
+def health_check():
+    return {
+        "status": "healthy",
+        "project": settings.PROJECT_NAME,
+        "mock_mode": settings.AI_MOCK_MODE,
+        "db_connected": True
+    }
+
+# Create local upload directories if missing
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
