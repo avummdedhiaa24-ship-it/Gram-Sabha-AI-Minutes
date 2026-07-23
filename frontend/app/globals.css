@@ -12,11 +12,18 @@
   --foreground: #f8fafc;
 }
 
+html {
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 100vh;
 }
 
 /* Custom modern scrollbar */
