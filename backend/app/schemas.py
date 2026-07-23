@@ -166,7 +166,7 @@ class MeetingResponse(MeetingBase):
     qr_code_data: Optional[str] = None
     agenda_pdf_url: Optional[str] = None
     audio_url: Optional[str] = None
-    video_url: Column = None
+    video_url: Optional[str] = None
     secretary_id: Optional[int] = None
     created_at: datetime
 
