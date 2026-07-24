@@ -1033,10 +1033,10 @@ function VerifyPage() {
   const [schemesStr, setSchemesStr] = useState("");
   const [budgetStr, setBudgetStr] = useState("");
 
-  // Translation states
   const [translationLanguage, setTranslationLanguage] = useState("original");
   const [translationData, setTranslationData] = useState<any>(null);
   const [translationLoading, setTranslationLoading] = useState(false);
+  const [leftTab, setLeftTab] = useState<"transcript" | "attendance">("transcript");
 
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const lang = e.target.value;
@@ -1103,6 +1103,7 @@ function VerifyPage() {
     setSuccess("");
     setTranslationLanguage("original");
     setTranslationData(null);
+    setLeftTab("transcript");
     try {
       const detail = await meetingsApi.get(meetingId, token);
       setMeetingDetail(detail);
@@ -1241,46 +1242,111 @@ function VerifyPage() {
         </div>
       ) : minutesData ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-          {/* Left panel - ASR Transcript Reference */}
+          {/* Left panel - ASR Transcript & Attendance Register Tabbed View */}
           <div className="bg-slate-50/50 dark:bg-slate-800/15 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 h-[600px] overflow-y-auto pr-2">
-            <h3 className="text-sm font-bold flex items-center text-slate-800 dark:text-slate-200">
-              <FileText className="h-4.5 w-4.5 mr-2 text-indigo-500" />
-              ASR Transcript Logs
-            </h3>
-            {translationLanguage !== "original" && translationData ? (
-              <div className="space-y-4 font-sans text-xs">
-                {translationData.transcript_translated_json && translationData.transcript_translated_json.length > 0 ? (
-                  translationData.transcript_translated_json.map((seg: any, index: number) => (
-                    <div key={index} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-3 rounded-xl shadow-sm">
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold mb-1">
-                        <span className="text-indigo-600 dark:text-indigo-400">{seg.speaker}</span>
-                        <span>{seg.start}s - {seg.end}s</span>
-                      </div>
-                      <p className="text-slate-650 dark:text-slate-300 font-medium leading-relaxed">{seg.text}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-slate-400 font-semibold italic">No translated transcript segments found.</p>
-                )}
+            <div className="flex border-b border-slate-200 dark:border-slate-800 pb-2 justify-between items-center">
+              <div className="flex space-x-4">
+                <button
+                  onClick={() => setLeftTab("transcript")}
+                  className={`text-xs font-bold pb-2 transition-all border-b-2 flex items-center ${
+                    leftTab === "transcript"
+                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                      : "border-transparent text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  <FileText className="h-3.5 w-3.5 mr-1" />
+                  ASR Transcript Logs
+                </button>
+                <button
+                  onClick={() => setLeftTab("attendance")}
+                  className={`text-xs font-bold pb-2 transition-all border-b-2 flex items-center ${
+                    leftTab === "attendance"
+                      ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                      : "border-transparent text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  <Users className="h-3.5 w-3.5 mr-1" />
+                  Citizen Attendance ({meetingDetail?.attendance?.length ?? 0})
+                </button>
               </div>
-            ) : meetingDetail?.transcripts ? (
-              <div className="space-y-4 font-sans text-xs">
-                {meetingDetail.transcripts.diarized_json ? (
-                  meetingDetail.transcripts.diarized_json.map((seg: any, index: number) => (
-                    <div key={index} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-3 rounded-xl shadow-sm">
-                      <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold mb-1">
-                        <span className="text-indigo-600 dark:text-indigo-400">{seg.speaker}</span>
-                        <span>{seg.start}s - {seg.end}s</span>
-                      </div>
-                      <p className="text-slate-650 dark:text-slate-300 font-medium leading-relaxed">{seg.text}</p>
-                    </div>
-                  ))
+            </div>
+
+            {leftTab === "transcript" ? (
+              <>
+                {translationLanguage !== "original" && translationData ? (
+                  <div className="space-y-4 font-sans text-xs">
+                    {translationData.transcript_translated_json && translationData.transcript_translated_json.length > 0 ? (
+                      translationData.transcript_translated_json.map((seg: any, index: number) => (
+                        <div key={index} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-3 rounded-xl shadow-sm">
+                          <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold mb-1">
+                            <span className="text-indigo-600 dark:text-indigo-400">{seg.speaker}</span>
+                            <span>{seg.start}s - {seg.end}s</span>
+                          </div>
+                          <p className="text-slate-650 dark:text-slate-300 font-medium leading-relaxed">{seg.text}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-400 font-semibold italic">No translated transcript segments found.</p>
+                    )}
+                  </div>
+                ) : meetingDetail?.transcripts ? (
+                  <div className="space-y-4 font-sans text-xs">
+                    {meetingDetail.transcripts.diarized_json ? (
+                      meetingDetail.transcripts.diarized_json.map((seg: any, index: number) => (
+                        <div key={index} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-850 p-3 rounded-xl shadow-sm">
+                          <div className="flex justify-between items-center text-[10px] text-slate-400 font-bold mb-1">
+                            <span className="text-indigo-600 dark:text-indigo-400">{seg.speaker}</span>
+                            <span>{seg.start}s - {seg.end}s</span>
+                          </div>
+                          <p className="text-slate-650 dark:text-slate-300 font-medium leading-relaxed">{seg.text}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-slate-600 leading-relaxed font-semibold italic">{meetingDetail.transcripts.raw_text}</p>
+                    )}
+                  </div>
                 ) : (
-                  <p className="text-slate-600 leading-relaxed font-semibold italic">{meetingDetail.transcripts.raw_text}</p>
+                  <p className="text-xs text-slate-400 font-semibold italic">No raw transcript segments found for this meeting.</p>
                 )}
-              </div>
+              </>
             ) : (
-              <p className="text-xs text-slate-400 font-semibold italic">No raw transcript segments found for this meeting.</p>
+              <div className="space-y-4 font-sans text-xs">
+                {meetingDetail?.attendance && meetingDetail.attendance.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase">
+                          <th className="pb-2">Name</th>
+                          <th className="pb-2">Role</th>
+                          <th className="pb-2">Social Group</th>
+                          <th className="pb-2">Check-in Time</th>
+                          <th className="pb-2 text-right">Verification</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                        {meetingDetail.attendance.map((att: any) => (
+                          <tr key={att.id} className="hover:bg-slate-50/20">
+                            <td className="py-3 font-bold text-slate-800 dark:text-slate-100">{att.user.full_name}</td>
+                            <td className="py-3 capitalize text-slate-500">{att.user.role}</td>
+                            <td className="py-3 font-mono text-[10px] text-slate-450">{att.user.social_category}</td>
+                            <td className="py-3 text-[10px] text-slate-400">{new Date(att.checkin_time).toLocaleTimeString()}</td>
+                            <td className="py-3 text-right">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-550/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                                {att.method === "qr" ? "QR Scan" : "Manual"}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="py-10 text-center space-y-2">
+                    <Users className="h-8 w-8 text-slate-300 mx-auto" />
+                    <p className="text-xs text-slate-450 font-semibold italic">No citizen attendance records for this meeting.</p>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
