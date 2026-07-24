@@ -71,16 +71,36 @@ def ask_chatbot(
             )
 
         if semantic_matches:
+            # Translate individual segments first
+            translated_segments = []
+            for match in semantic_matches:
+                translated_txt = ai_pipeline.translate_text(match["text_segment"].strip(), target_lang)
+                # Strip any fallback wrappers if they were added
+                for prefix in ["[ENGLISH TRANSLATION]:", "[HINDI TRANSLATION]:", "[MARATHI TRANSLATION]:", "[TELUGU TRANSLATION]:", "[MOCK-en]:", "[MOCK-hi]:", "[MOCK-mr]:", "[MOCK-te]:"]:
+                    if translated_txt.startswith(prefix):
+                        translated_txt = translated_txt[len(prefix):].strip()
+                translated_segments.append(translated_txt)
+
+            # Construct the final answer dynamically in the target language
             top_match = semantic_matches[0]
-            # Generate the dynamic English base answer first
-            base_answer = (
-                f"Under the session '{top_match['title']}', it was documented that: '{top_match['text_segment'].strip()}'."
-            )
-            if len(semantic_matches) > 1 and semantic_matches[1]['title'] != top_match['title']:
-                base_answer += f" Additionally, the meeting '{semantic_matches[1]['title']}' noted: '{semantic_matches[1]['text_segment'].strip()}'."
+            top_text = translated_segments[0]
             
-            # Translate the final answer into the user's requested language
-            response_text = ai_pipeline.translate_text(base_answer, target_lang)
+            # Map session templates to target languages
+            session_prefix = {
+                "en": f"Under the session '{top_match['title']}', it was documented that: '{top_text}'.",
+                "hi": f"सत्र '{top_match['title']}' के तहत, यह प्रलेखित किया गया था: '{top_text}'.",
+                "mr": f"'{top_match['title']}' या सत्रांतर्गत असे नमूद केले आहे: '{top_text}'."
+            }
+            response_text = session_prefix.get(target_lang, f"Under the session '{top_match['title']}', it was documented that: '{top_text}'.")
+            
+            if len(semantic_matches) > 1 and semantic_matches[1]['title'] != top_match['title']:
+                sec_text = translated_segments[1]
+                add_prefix = {
+                    "en": f" Additionally, the meeting '{semantic_matches[1]['title']}' noted: '{sec_text}'.",
+                    "hi": f" इसके अतिरिक्त, बैठक '{semantic_matches[1]['title']}' में उल्लेख किया गया था: '{sec_text}'.",
+                    "mr": f" तसेच, '{semantic_matches[1]['title']}' बैठकीत असे नमूद केले आहे: '{sec_text}'."
+                }
+                response_text += add_prefix.get(target_lang, f" Additionally, the meeting '{semantic_matches[1]['title']}' noted: '{sec_text}'.")
         else:
             base_answer = "I could not find any explicit decisions or discussions about that topic."
             response_text = ai_pipeline.translate_text(base_answer, target_lang)

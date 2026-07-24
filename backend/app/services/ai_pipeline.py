@@ -389,9 +389,26 @@ class AIPipelineService:
             }
         }
 
-        # Check if the clean_text is in our catalog
+        # Check if the clean_text is in our catalog directly
         if clean_text in translation_catalog:
             return translation_catalog[clean_text].get(target_lang, f"[MOCK-{target_lang}]: {text}")
+
+        # Check if the text contains any of our catalog keys as substrings (for concatenated chunks)
+        translated_parts = []
+        remaining_text = clean_text
+        
+        # Sort catalog keys by length descending to match larger blocks first
+        sorted_keys = sorted(translation_catalog.keys(), key=len, reverse=True)
+        
+        has_replacements = False
+        for key in sorted_keys:
+            if key in remaining_text:
+                translation = translation_catalog[key].get(target_lang, key)
+                remaining_text = remaining_text.replace(key, translation)
+                has_replacements = True
+                
+        if has_replacements:
+            return remaining_text
 
         # Fallback if text is not in catalog (for dynamically created text)
         if self.mock_mode:
