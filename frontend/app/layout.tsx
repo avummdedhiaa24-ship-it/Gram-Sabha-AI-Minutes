@@ -14,16 +14,19 @@ import {
   UserCheck, 
   Sun, 
   Moon,
-  LogOut
+  LogOut,
+  Globe
 } from "lucide-react";
 import AuthView from "./components/AuthView";
 import { authApi } from "./lib/api";
+import { useTranslation, LanguageCode } from "./lib/translations";
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { t, currentLanguage, setLanguage } = useTranslation();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<any | null>(null);
@@ -141,7 +144,7 @@ export default function RootLayout({
   const visibleNavItems = navItems.filter((item) => allowedTabs.includes(item.id));
 
   return (
-    <html lang="en" className={darkMode ? "dark" : ""}>
+    <html lang={currentLanguage} className={darkMode ? "dark" : ""}>
       <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50 transition-colors duration-200 min-h-screen flex flex-col">
         {/* Government Style Header Banner */}
         <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40 shadow-sm">
@@ -153,18 +156,33 @@ export default function RootLayout({
               </div>
               <div>
                 <div className="flex items-center space-x-1.5">
-                  <span className="text-xs font-semibold tracking-wider text-amber-600 dark:text-amber-400 uppercase">Digital India</span>
+                  <span className="text-xs font-semibold tracking-wider text-amber-600 dark:text-amber-400 uppercase">{t("Digital India")}</span>
                   <span className="text-xs text-slate-400">|</span>
-                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase">e-Panchayat Initiative</span>
+                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 uppercase">{t("e-Panchayat Initiative")}</span>
                 </div>
                 <h1 className="text-xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-indigo-950 dark:from-white dark:to-slate-200 bg-clip-text text-transparent">
-                  Gram Sabha AI Minutes
+                  {t("Gram Sabha AI Minutes")}
                 </h1>
               </div>
             </div>
 
-            {/* User Profile Badge & Logout Actions */}
+            {/* User Profile Badge, Language Selector & Actions */}
             <div className="flex items-center space-x-4">
+              {/* Global UI Language Selector */}
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg px-2.5 py-1.5 border border-slate-200 dark:border-slate-700">
+                <Globe className="h-4 w-4 text-indigo-500 mr-1.5" />
+                <select
+                  value={currentLanguage}
+                  onChange={(e) => setLanguage(e.target.value as LanguageCode)}
+                  className="bg-transparent text-xs font-bold text-slate-700 dark:text-slate-200 outline-none border-none cursor-pointer pr-1"
+                >
+                  <option value="en" className="dark:bg-slate-900 text-slate-800 dark:text-white">English</option>
+                  <option value="hi" className="dark:bg-slate-900 text-slate-800 dark:text-white">हिन्दी</option>
+                  <option value="mr" className="dark:bg-slate-900 text-slate-800 dark:text-white">मराठी</option>
+                  <option value="te" className="dark:bg-slate-900 text-slate-800 dark:text-white">తెలుగు</option>
+                </select>
+              </div>
+
               <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-1.5 border border-slate-200 dark:border-slate-700">
                 <UserCheck className="h-4 w-4 text-indigo-500 mr-2" />
                 <div className="text-left leading-tight">
@@ -181,7 +199,7 @@ export default function RootLayout({
               <button 
                 onClick={handleLogout}
                 className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-350 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/20 dark:hover:text-rose-400 transition-colors"
-                title="Log Out / Switch User"
+                title={t("Log Out") + " / " + t("Switch User")}
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -203,7 +221,7 @@ export default function RootLayout({
           <aside className="w-full md:w-64 shrink-0">
             <nav className="space-y-1 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm sticky top-24">
               <div className="px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Modules
+                {t("Modules")}
               </div>
               {visibleNavItems.map((item) => {
                 const Icon = item.icon;
@@ -219,7 +237,7 @@ export default function RootLayout({
                     }`}
                   >
                     <Icon className={`h-5 w-5 ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"}`} />
-                    <span>{item.label}</span>
+                    <span>{t(item.label)}</span>
                   </button>
                 );
               })}

@@ -45,6 +45,7 @@ import {
   auditApi,
   translationApi
 } from "./lib/api";
+import { useTranslation } from "./lib/translations";
 
 // Helper to access token and user locally
 const getAuthToken = () => typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
@@ -55,6 +56,7 @@ const getAuthUser = () => {
 };
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -107,6 +109,7 @@ export default function Dashboard() {
 // SUB-PAGE: DASHBOARD VIEW
 // ----------------------------------------------------
 function DashboardView() {
+  const { t } = useTranslation();
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -206,8 +209,8 @@ function DashboardView() {
           <Users className="h-96 w-96 text-white" />
         </div>
         <div className="relative z-10">
-          <h2 className="text-2xl font-bold">Namaste! Gram Panchayat Digital Dashboard</h2>
-          <p className="text-slate-300 text-sm mt-1">Real-time indicators, digital meeting ledger tracking, and Indic Whisper translation portal.</p>
+          <h2 className="text-2xl font-bold">{t("Namaste! Gram Panchayat Digital Dashboard")}</h2>
+          <p className="text-slate-300 text-sm mt-1">{t("Real-time indicators, digital meeting ledger tracking, and Indic Whisper translation portal.")}</p>
         </div>
         {showRecordButton && (
           <div className="shrink-0 flex space-x-3 relative z-10">
@@ -218,7 +221,7 @@ function DashboardView() {
               }}
               className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-xl flex items-center shadow-md transition-colors"
             >
-              Record Live Sabha
+              {t("Record Live Sabha")}
               <ArrowUpRight className="h-3.5 w-3.5 ml-1.5" />
             </button>
           </div>
@@ -244,11 +247,11 @@ function DashboardView() {
                 </div>
               </div>
               <div className="mt-4">
-                <div className="text-slate-400 text-xs font-medium tracking-wide uppercase">{kpi.title}</div>
+                <div className="text-slate-400 text-xs font-medium tracking-wide uppercase">{t(kpi.title)}</div>
                 <div className="text-2xl font-extrabold mt-1 tracking-tight text-slate-800 dark:text-white">{kpi.value}</div>
                 <div className="text-emerald-600 dark:text-emerald-400 text-xs font-medium mt-2 flex items-center">
                   <TrendingUp className="h-3 w-3 mr-1" />
-                  <span>{kpi.change}</span>
+                  <span>{t(kpi.change)}</span>
                 </div>
               </div>
             </div>
@@ -262,7 +265,7 @@ function DashboardView() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
           <h3 className="text-base font-bold mb-4 flex items-center text-slate-800 dark:text-slate-100">
             <IndianRupee className="h-4.5 w-4.5 mr-2 text-amber-500" />
-            Budgetary Allocations (INR)
+            {t("Budgetary Allocations (INR)")}
           </h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -284,7 +287,7 @@ function DashboardView() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
           <h3 className="text-base font-bold mb-4 flex items-center text-slate-800 dark:text-slate-100">
             <Users className="h-4.5 w-4.5 mr-2 text-indigo-500" />
-            Marginalized & Social Category Split
+            {t("Marginalized & Social Category Split")}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
             <div className="h-56 w-full">
@@ -328,7 +331,7 @@ function DashboardView() {
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 lg:col-span-1 shadow-sm">
           <h3 className="text-base font-bold mb-4 flex items-center text-slate-800 dark:text-slate-100">
             <Hourglass className="h-4.5 w-4.5 mr-2 text-indigo-500" />
-            Speaking Time Distribution
+            {t("Speaking Time Distribution")}
           </h3>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -354,7 +357,7 @@ function DashboardView() {
         {/* Recent Gram Sabhas Table */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 lg:col-span-2 shadow-sm">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">Recent Gram Sabha Logs</h3>
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">{t("Recent Gram Sabha Logs")}</h3>
             <button 
               onClick={() => {
                 window.history.pushState({}, "", "/meetings");
@@ -362,7 +365,7 @@ function DashboardView() {
               }}
               className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center"
             >
-              View All Logs
+              {t("View All Logs")}
               <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
             </button>
           </div>
@@ -370,10 +373,10 @@ function DashboardView() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase">
-                  <th className="pb-3 font-medium">Meeting Title</th>
-                  <th className="pb-3 font-medium">Conducted On</th>
-                  <th className="pb-3 font-medium">Status</th>
-                  <th className="pb-3 font-medium">Location</th>
+                  <th className="pb-3 font-medium">{t("MEETING TITLE")}</th>
+                  <th className="pb-3 font-medium">{t("CONDUCTED ON")}</th>
+                  <th className="pb-3 font-medium">{t("STATUS")}</th>
+                  <th className="pb-3 font-medium">{t("LOCATION")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -402,7 +405,7 @@ function DashboardView() {
                           ? "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400"
                           : "bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-400"
                       }`}>
-                        {meet.status}
+                        {t(meet.status)}
                       </span>
                     </td>
                     <td className="py-3.5 text-slate-650 dark:text-slate-300 font-semibold">{meet.location || "Rampur"}</td>
@@ -428,6 +431,7 @@ function DashboardView() {
 // SUB-PAGE: MEETINGS & ATTENDANCE MANAGEMENT
 // ----------------------------------------------------
 function MeetingsPage() {
+  const { t } = useTranslation();
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [location, setLocation] = useState("");
@@ -505,8 +509,8 @@ function MeetingsPage() {
   return (
     <div className="space-y-8 animate-fadeIn">
       <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
-        <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Meetings & Check-in QR Codes</h2>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Schedule Sabha assemblies, print Check-in passes, and trace attendance registers.</p>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{t("Meetings & Check-in QR Codes")}</h2>
+        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t("Schedule Sabha assemblies, print Check-in passes, and trace attendance registers.")}</p>
       </div>
 
       {error && (
@@ -520,11 +524,11 @@ function MeetingsPage() {
         {/* Creation Form (Only visible to Secretary/Admin) */}
         <div className={`lg:col-span-2 ${isSecretaryOrAdmin ? "" : "hidden"}`}>
           <div className="bg-slate-50/50 dark:bg-slate-800/20 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6">
-            <h3 className="text-base font-bold mb-4 text-slate-800 dark:text-slate-100">Schedule New Gram Sabha</h3>
+            <h3 className="text-base font-bold mb-4 text-slate-800 dark:text-slate-100">{t("Schedule New Gram Sabha")}</h3>
             <form onSubmit={handleCreate} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Sabha Title</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t("Sabha Title")}</label>
                   <input 
                     type="text" 
                     value={title} 
@@ -535,7 +539,7 @@ function MeetingsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Proposed Date & Time</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t("Proposed Date & Time")}</label>
                   <input 
                     type="datetime-local" 
                     value={date} 
@@ -547,7 +551,7 @@ function MeetingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Assembly Location</label>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t("Assembly Location")}</label>
                 <input 
                   type="text" 
                   value={location} 
@@ -558,7 +562,7 @@ function MeetingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Detailed Agenda</label>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t("Detailed Agenda")}</label>
                 <textarea 
                   value={agenda} 
                   onChange={(e) => setAgenda(e.target.value)}
@@ -573,7 +577,7 @@ function MeetingsPage() {
                 disabled={submitLoading}
                 className="px-5 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center shadow-md transition-colors"
               >
-                {submitLoading ? "Scheduling..." : "Schedule Gram Sabha"}
+                {submitLoading ? t("Scheduling...") : t("Schedule Gram Sabha")}
                 <Calendar className="h-4 w-4 ml-1.5" />
               </button>
             </form>
@@ -691,6 +695,7 @@ function MeetingsPage() {
 // SUB-PAGE: MEETING RECORDER PIPELINE (SPEECH-TO-TEXT)
 // ----------------------------------------------------
 function RecordPage() {
+  const { t } = useTranslation();
   const [recording, setRecording] = useState(false);
   const [audioChunks, setAudioChunks] = useState(0);
   const [noiseReduction, setNoiseReduction] = useState(true);
@@ -864,8 +869,8 @@ function RecordPage() {
   return (
     <div className="space-y-8 animate-fadeIn">
       <div className="border-b border-slate-200 dark:border-slate-800 pb-4">
-        <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Indic Speech-to-Text Pipeline (ASR)</h2>
-        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Capture live Gram Sabha audio with noise filter buffers, or upload pre-recorded meetings.</p>
+        <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{t("Indic Speech-to-Text Pipeline (ASR)")}</h2>
+        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t("Capture live Gram Sabha audio with noise filter buffers, or upload pre-recorded meetings.")}</p>
       </div>
 
       {error && (
@@ -879,8 +884,8 @@ function RecordPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Main Recording Panel */}
           <div className="bg-slate-900 text-white rounded-2xl p-8 text-center relative overflow-hidden shadow-lg border border-slate-850">
-            <h3 className="text-lg font-bold">Assembly Live Mic Streamer</h3>
-            <p className="text-slate-400 text-xs mt-1">Directly records and streams audio segments to the ASR indic pipeline.</p>
+            <h3 className="text-lg font-bold">{t("Assembly Live Mic Streamer")}</h3>
+            <p className="text-slate-400 text-xs mt-1">{t("Directly records and streams audio segments to the ASR indic pipeline.")}</p>
             
             {/* Visualizer animation */}
             <div className="my-8 flex justify-center items-center space-x-1.5 h-16">
@@ -927,10 +932,10 @@ function RecordPage() {
 
           {/* Upload panel */}
           <div className="bg-slate-50/50 dark:bg-slate-800/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
-            <h3 className="text-base font-bold mb-4 text-slate-800 dark:text-slate-100">Upload Pre-recorded Audio or Video</h3>
+            <h3 className="text-base font-bold mb-4 text-slate-800 dark:text-slate-100">{t("Upload Pre-recorded Audio or Video")}</h3>
             <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-8 text-center hover:bg-slate-50 dark:hover:bg-slate-900/10 cursor-pointer transition-colors relative">
               <Upload className="h-8 w-8 text-slate-450 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">Drag and drop file here, or click to browse</p>
+              <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{t("Drag and drop file here, or click to browse")}</p>
               <p className="text-xs text-slate-400 mt-1">Supports MP3, WAV, WebM, M4A (max 100MB)</p>
               <input 
                 type="file" 
@@ -943,7 +948,7 @@ function RecordPage() {
                 htmlFor="file-upload" 
                 className="mt-4 inline-block px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold cursor-pointer"
               >
-                Select Audio File
+                {t("Select Audio File")}
               </label>
             </div>
           </div>
@@ -1017,6 +1022,7 @@ function RecordPage() {
 // SUB-PAGE: HUMAN VERIFICATION EDITOR (SIDE-BY-SIDE)
 // ----------------------------------------------------
 function VerifyPage() {
+  const { t } = useTranslation();
   const [draftMeetings, setDraftMeetings] = useState<any[]>([]);
   const [selectedMeetingId, setSelectedMeetingId] = useState("");
   const [meetingDetail, setMeetingDetail] = useState<any | null>(null);
@@ -1179,8 +1185,8 @@ function VerifyPage() {
     <div className="space-y-8 animate-fadeIn">
       <div className="border-b border-slate-200 dark:border-slate-800 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Review & Sign Resolutions</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Audit draft resolutions, edit budget items, and seal with SHA256 cryptographic logs.</p>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{t("Review & Sign Resolutions")}</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t("Audit draft resolutions, edit budget items, and seal with SHA256 cryptographic logs.")}</p>
         </div>
 
         {/* Selectors container */}
@@ -1255,7 +1261,7 @@ function VerifyPage() {
                   }`}
                 >
                   <FileText className="h-3.5 w-3.5 mr-1" />
-                  ASR Transcript Logs
+                  {t("ASR Transcript Logs")}
                 </button>
                 <button
                   onClick={() => setLeftTab("attendance")}
@@ -1266,7 +1272,7 @@ function VerifyPage() {
                   }`}
                 >
                   <Users className="h-3.5 w-3.5 mr-1" />
-                  Citizen Attendance ({meetingDetail?.attendance?.length ?? 0})
+                  {t("Citizen Attendance")} ({meetingDetail?.attendance?.length ?? 0})
                 </button>
               </div>
             </div>
@@ -1353,7 +1359,7 @@ function VerifyPage() {
           {/* Right panel - Live Editor */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 flex flex-col h-[600px] overflow-y-auto space-y-5">
             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-sm font-bold">Official Resolution Form</h3>
+              <h3 className="text-sm font-bold">{t("Official Resolution Form")}</h3>
               {minutesData.digital_hash ? (
                 <div className="bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center">
                   <Lock className="h-3 w-3 mr-1" /> Ledger Locked
@@ -1368,7 +1374,7 @@ function VerifyPage() {
             <div className="space-y-4 flex-1">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
-                  {translationLanguage !== "original" ? `Translated Executive Summary (${translationLanguage})` : "Executive Summary"}
+                  {translationLanguage !== "original" ? `Translated Executive Summary (${translationLanguage.toUpperCase()})` : t("EXECUTIVE SUMMARY")}
                 </label>
                 <textarea 
                   value={translationLanguage !== "original" && translationData ? translationData.minutes_summary : summary}
@@ -1381,7 +1387,7 @@ function VerifyPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Topics Discussed (JSON Array)</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t("TOPICS DISCUSSED (JSON ARRAY)")}</label>
                   <textarea 
                     value={topicsStr}
                     onChange={(e) => setTopicsStr(e.target.value)}
@@ -1391,7 +1397,7 @@ function VerifyPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Supporting Schemes (JSON Array)</label>
+                  <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t("SUPPORTING SCHEMES (JSON ARRAY)")}</label>
                   <textarea 
                     value={schemesStr}
                     onChange={(e) => setSchemesStr(e.target.value)}
@@ -1403,7 +1409,7 @@ function VerifyPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Budget Breakdown (JSON Key-Value)</label>
+                <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">{t("BUDGET BREAKDOWN (JSON KEY-VALUE)")}</label>
                 <textarea 
                   value={budgetStr}
                   onChange={(e) => setBudgetStr(e.target.value)}
@@ -1453,14 +1459,14 @@ function VerifyPage() {
                     disabled={saveLoading || finalizeLoading}
                     className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-white rounded-xl text-xs font-bold transition-all"
                   >
-                    {saveLoading ? "Saving..." : "Save Draft Changes"}
+                    {saveLoading ? "Saving..." : t("Save Draft Changes")}
                   </button>
                   <button
                     onClick={handleFinalize}
                     disabled={saveLoading || finalizeLoading}
                     className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-md hover:shadow-emerald-650/15 transition-all"
                   >
-                    <Lock className="h-3.5 w-3.5" /> Approve & Sign Ledger
+                    <Lock className="h-3.5 w-3.5" /> {t("Approve & Sign Ledger")}
                   </button>
                 </div>
               )
@@ -1482,8 +1488,9 @@ function VerifyPage() {
 // SUB-PAGE: AI SEARCH ASSISTANT (RAG CHATBOT)
 // ----------------------------------------------------
 function ChatPage() {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<any[]>([
-    { role: "assistant", content: "Greetings! I am the e-Panchayat RAG assistant. Ask me anything about local Gram Sabha resolutions, budgetary allocations, or scheme updates." }
+    { role: "assistant", content: t("Greetings! I am the e-Panchayat RAG assistant. Ask me anything about local Gram Sabha resolutions, budgetary allocations, or scheme updates.") }
   ]);
   const [inputValue, setInputValue] = useState("");
   const [meetings, setMeetings] = useState<any[]>([]);
@@ -1539,19 +1546,19 @@ function ChatPage() {
     <div className="space-y-6 animate-fadeIn h-[680px] flex flex-col">
       <div className="border-b border-slate-200 dark:border-slate-800 pb-3 flex justify-between items-center shrink-0">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">AI RAG Assistant</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Contextual semantic search over archived Gram Sabha transcripts.</p>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{t("RAG Assistant")}</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t("Contextual semantic search over archived Gram Sabha transcripts.")}</p>
         </div>
 
         {/* Optional filter */}
         <div className="flex items-center space-x-2">
-          <label className="text-xs font-bold text-slate-500">Filter Meeting:</label>
+          <label className="text-xs font-bold text-slate-500">{t("Filter Meeting:")}</label>
           <select 
             value={selectedMeetingId}
             onChange={(e) => setSelectedMeetingId(e.target.value)}
             className="bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 text-[11px] outline-none font-bold"
           >
-            <option value="">All Sabha Archives</option>
+            <option value="">{t("All Sabha Archives")}</option>
             {meetings.map((m) => (
               <option key={m.id} value={m.id}>{m.title}</option>
             ))}
@@ -1579,7 +1586,7 @@ function ChatPage() {
               {/* Citations */}
               {msg.citations && msg.citations.length > 0 && (
                 <div className="border-t border-slate-100 dark:border-slate-850 pt-2.5 mt-2.5 space-y-2">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Official Citations & Sources</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t("Official Citations & Sources")}</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {msg.citations.map((cit: any, cIdx: number) => (
                       <div key={cIdx} className="bg-slate-50 dark:bg-slate-950 p-2.5 border border-slate-100 dark:border-slate-850 rounded-xl text-[10px]">
@@ -1601,7 +1608,7 @@ function ChatPage() {
           <div className="flex justify-start">
             <div className="bg-white border border-slate-100 rounded-2xl p-4 flex items-center space-x-2">
               <Loader2 className="h-4 w-4 text-indigo-600 animate-spin" />
-              <span className="text-xs text-slate-400 font-semibold">Consulting vector indexing databases...</span>
+              <span className="text-xs text-slate-400 font-semibold">{t("Consulting vector indexing databases...")}</span>
             </div>
           </div>
         )}
@@ -1614,7 +1621,7 @@ function ChatPage() {
           type="text" 
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Ask a question about Rampur budget updates, drinking water projects, or scheduled meetings..."
+          placeholder={t("Ask a question about Rampur budget updates, drinking water projects, or scheduled meetings...")}
           className="flex-1 bg-white border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
         />
         <button 
@@ -1622,7 +1629,7 @@ function ChatPage() {
           disabled={loading || !inputValue.trim()}
           className="px-6 bg-indigo-600 hover:bg-indigo-750 disabled:opacity-50 text-white text-xs font-bold rounded-xl transition-all shadow-md"
         >
-          Send Query
+          {t("Send Query")}
         </button>
       </form>
     </div>
@@ -1824,6 +1831,7 @@ function CitizenPortalPage() {
 // SUB-PAGE: IMMUTABLE AUDIT LEDGER
 // ----------------------------------------------------
 function AuditPage() {
+  const { t } = useTranslation();
   const [meetings, setMeetings] = useState<any[]>([]);
   const [selectedMeetingId, setSelectedMeetingId] = useState("");
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
@@ -1873,13 +1881,13 @@ function AuditPage() {
     <div className="space-y-8 animate-fadeIn">
       <div className="border-b border-slate-200 dark:border-slate-800 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Immutable e-Panchayat Audit Ledger</h2>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Verify cryptographic checksum signatures of finalized Gram Sabha decisions.</p>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{t("Panchayat Cryptographic Ledger Audit")}</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">{t("Verify immutable transactions logs, previous states, and SHA256 digital seals.")}</p>
         </div>
 
         {/* Meeting selector dropdown */}
         <div className="flex items-center space-x-2">
-          <label className="text-xs font-bold text-slate-550 dark:text-slate-400">Target Sabha Ledger:</label>
+          <label className="text-xs font-bold text-slate-550 dark:text-slate-400">{t("Target Sabha Ledger:")}</label>
           <select 
             value={selectedMeetingId}
             onChange={handleMeetingSelect}
@@ -1888,7 +1896,7 @@ function AuditPage() {
             {meetings.map((d) => (
               <option key={d.id} value={d.id}>{d.title} (ID: {d.id})</option>
             ))}
-            {meetings.length === 0 && <option value="">No meetings found</option>}
+            {meetings.length === 0 && <option value="">{t("No meetings found")}</option>}
           </select>
         </div>
       </div>
@@ -1906,7 +1914,7 @@ function AuditPage() {
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-          <h3 className="text-base font-bold mb-6 text-slate-800 dark:text-slate-100">Verification Ledger Chronology</h3>
+          <h3 className="text-base font-bold mb-6 text-slate-800 dark:text-slate-100">{t("Verification Ledger Chronology")}</h3>
           <div className="space-y-6 relative border-l border-slate-100 dark:border-slate-850 ml-4 pl-6">
             {auditLogs.map((log) => (
               <div key={log.id} className="relative">
@@ -1923,11 +1931,11 @@ function AuditPage() {
                   <h4 className="text-sm font-bold text-slate-800 dark:text-slate-100">Action performed by User ID: {log.modified_by_id}</h4>
                   <div className="grid grid-cols-2 gap-4 pt-1">
                     <div className="bg-slate-50/50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Previous state summary</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">{t("Previous state summary")}</span>
                       <p className="text-[11px] text-slate-500 italic max-h-[80px] overflow-y-auto">{log.previous_state?.summary || "No previous summary"}</p>
                     </div>
                     <div className="bg-slate-50/50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-850">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Current state summary</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">{t("Current state summary")}</span>
                       <p className="text-[11px] text-slate-500 italic max-h-[80px] overflow-y-auto">{log.current_state?.summary || "No current summary"}</p>
                     </div>
                   </div>
