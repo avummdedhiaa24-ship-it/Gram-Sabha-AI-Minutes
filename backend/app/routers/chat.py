@@ -59,6 +59,9 @@ def ask_chatbot(
         if chat_req.meeting_id:
             semantic_matches = [m for m in semantic_matches if m["meeting_id"] == chat_req.meeting_id]
 
+        # Filter matches: keep only matches with confidence >= 0.25 (25%)
+        semantic_matches = [m for m in semantic_matches if m["confidence"] >= 0.25]
+
         citations_res = []
         for match in semantic_matches:
             citations_res.append(
@@ -116,6 +119,9 @@ def ask_chatbot(
         semantic_matches = rag_service.search(latest_user_msg, limit=3)
         if chat_req.meeting_id:
             semantic_matches = [m for m in semantic_matches if m["meeting_id"] == chat_req.meeting_id]
+
+        # Filter matches: keep only matches with confidence >= 0.25 (25%)
+        semantic_matches = [m for m in semantic_matches if m["confidence"] >= 0.25]
 
         citations_res = []
         for match in semantic_matches:
