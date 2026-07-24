@@ -31,17 +31,13 @@ def ask_chatbot(
     was_prompted_for_language = False
     original_question = ""
     
-    # Iterate backward
-    for i in range(len(messages) - 2, -1, -1):
-        msg = messages[i]
-        if msg.role == "assistant" and "In which language would you like me to answer?" in msg.content:
+    if len(messages) >= 2:
+        last_assistant_msg = messages[-2]
+        if last_assistant_msg.role == "assistant" and "In which language would you like me to answer?" in last_assistant_msg.content:
             was_prompted_for_language = True
             # Find the user question asked right before this assistant message
-            for j in range(i - 1, -1, -1):
-                if messages[j].role == "user":
-                    original_question = messages[j].content
-                    break
-            break
+            if len(messages) >= 3 and messages[-3].role == "user":
+                original_question = messages[-3].content
 
     if was_prompted_for_language and original_question:
         # User is providing their language choice
