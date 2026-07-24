@@ -57,13 +57,16 @@ def ask_chatbot(
 
     # 3. Create response message text (answering based on the context block)
     if semantic_matches:
-        summary_info = " ".join([m["text_segment"] for m in semantic_matches])
+        top_match = semantic_matches[0]
+        # Dynamically formulate the answer based on the actual content of the retrieved documents
         response_text = (
             f"Based on the Gram Sabha meeting records, here is the answer: "
-            f"Regarding your query, records indicate: '{summary_info[:180]}...'. "
-            f"This was discussed under PMGSY/Jal Jeevan initiatives. "
-            f"Please check the cited meeting details below for verification."
+            f"Under the session '{top_match['title']}', it was documented that: '{top_match['text_segment'].strip()}'. "
         )
+        if len(semantic_matches) > 1 and semantic_matches[1]['title'] != top_match['title']:
+            response_text += f"Additionally, the meeting '{semantic_matches[1]['title']}' noted: '{semantic_matches[1]['text_segment'].strip()}'."
+        else:
+            response_text += "Please refer to the source citations below for full verification and context."
     else:
         response_text = (
             "I could not find any explicit decisions or discussions about that topic in the "

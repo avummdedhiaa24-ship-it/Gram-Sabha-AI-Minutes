@@ -106,12 +106,18 @@ class RAGService:
             if norm_q > 0 and norm_e > 0:
                 score = float(dot_product / (norm_q * norm_e))
             
-            # Boost score slightly if direct keyword overlap is found (hybrid search)
+            # Boost score if keywords match the document title or text (hybrid search)
             query_words = set(query.lower().split())
+            title_words = set(self.items[idx]["title"].lower().split())
             doc_words = set(self.items[idx]["text"].lower().split())
-            overlap = len(query_words.intersection(doc_words))
+            
+            title_overlap = len(query_words.intersection(title_words))
+            text_overlap = len(query_words.intersection(doc_words))
+            
             if len(query_words) > 0:
-                score += 0.05 * (overlap / len(query_words))
+                # Stronger boost for title matches (0.4) and moderate boost for text matches (0.1)
+                score += 0.4 * (title_overlap / len(title_words)) if len(title_words) > 0 else 0.0
+                score += 0.1 * (text_overlap / len(query_words))
             
             # Clip between 0 and 1
             score = min(max(score, 0.0), 1.0)
