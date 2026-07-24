@@ -155,14 +155,14 @@ function DashboardView() {
     },
     { 
       title: "Women Participation", 
-      value: `${metrics?.women_participation_pct ?? 0}%`, 
+      value: `${Number(metrics?.women_participation_pct ?? 0).toFixed(2)}%`, 
       icon: Users, 
       change: "Women empowerment ratio", 
       color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40" 
     },
     { 
       title: "Action Items Done", 
-      value: `${metrics?.action_completion_pct ?? 0}%`, 
+      value: `${Number(metrics?.action_completion_pct ?? 0).toFixed(2)}%`, 
       icon: CheckCircle, 
       change: `${metrics?.finalized_minutes ?? 0} signed minutes logs`, 
       color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40" 
@@ -177,9 +177,9 @@ function DashboardView() {
   ];
 
   const socialCategoryData = [
-    { name: "SC/ST", value: metrics?.sc_st_participation_pct ?? 0 },
-    { name: "OBC", value: metrics?.sc_st_participation_pct ? Math.max(10, 80 - metrics.sc_st_participation_pct) : 40 },
-    { name: "General/Others", value: metrics?.sc_st_participation_pct ? Math.max(10, 100 - metrics.sc_st_participation_pct - 30) : 60 }
+    { name: "SC/ST", value: Number(Number(metrics?.sc_st_participation_pct ?? 0).toFixed(2)) },
+    { name: "OBC", value: Number(Number(metrics?.sc_st_participation_pct ? Math.max(10, 80 - metrics.sc_st_participation_pct) : 40).toFixed(2)) },
+    { name: "General/Others", value: Number(Number(metrics?.sc_st_participation_pct ? Math.max(10, 100 - metrics.sc_st_participation_pct - 30) : 60).toFixed(2)) }
   ];
 
   const budgetAllocationData = metrics?.budget_allocation?.length > 0
@@ -314,7 +314,7 @@ function DashboardView() {
                     <div className="h-3 w-3 rounded-full" style={{ backgroundColor: ["#4F46E5", "#FF9933", "#10B981"][idx] }} />
                     <span className="font-semibold">{cat.name}</span>
                   </div>
-                  <span className="text-slate-500 dark:text-slate-400 font-bold">{cat.value}%</span>
+                  <span className="text-slate-500 dark:text-slate-400 font-bold">{Number(cat.value).toFixed(2)}%</span>
                 </div>
               ))}
             </div>
