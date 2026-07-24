@@ -78,7 +78,7 @@ export default function Dashboard() {
       case "Citizen":
         return ["dashboard", "meetings", "chat"];
       case "Secretary":
-        return ["dashboard", "meetings", "record", "chat"];
+        return ["dashboard", "meetings", "record", "verify", "chat"];
       case "Gram Sabha Moderator":
         return ["dashboard", "meetings", "verify", "chat"];
       case "District Officer":
