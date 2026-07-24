@@ -132,8 +132,8 @@ export const minutesApi = {
     return apiRequest(`/minutes/${meetingId}/finalize`, "POST", null, token);
   },
 
-  exportUrl: (meetingId: number, format: "text" | "json" = "text") => {
-    return `${BASE_URL}/minutes/${meetingId}/export?format=${format}`;
+  exportUrl: (meetingId: number, format: "text" | "json" = "text", lang: string = "original") => {
+    return `${BASE_URL}/minutes/${meetingId}/export?format=${format}&lang=${lang}`;
   },
 };
 

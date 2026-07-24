@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Dict, Any, List
+import json
 
 from app.core.database import get_db
 from app import models, schemas
 from app.routers.auth import get_current_user, RoleChecker
 from app.services.audit import audit_service
+from app.services.ai_pipeline import ai_pipeline
 
 router = APIRouter(prefix="/minutes", tags=["Minutes & Human Review"])
 
@@ -122,33 +124,73 @@ def finalize_minutes(
 def export_minutes(
     meeting_id: int,
     format: str = "text", # text, json
+    lang: str = "original",
     db: Session = Depends(get_db)
 ):
     meeting = db.query(models.Meeting).filter(models.Meeting.id == meeting_id).first()
     if not meeting or not meeting.minutes:
         raise HTTPException(status_code=404, detail="Meeting or minutes not found")
 
+    # Fetch/translate minutes details based on requested language
+    summary = meeting.minutes.summary
+    topics = meeting.minutes.topics or []
+    schemes = meeting.minutes.schemes or []
+    
+    if lang != "original":
+        # Check cached Translation table first
+        trans = db.query(models.Translation).filter(
+            models.Translation.meeting_id == meeting_id,
+            models.Translation.language == lang
+        ).first()
+        if trans:
+            summary = trans.minutes_summary
+        else:
+            summary = ai_pipeline.translate_text(summary, lang)
+
+        # Translate dynamic lists
+        topics = [ai_pipeline.translate_text(t, lang) for t in topics]
+        schemes = [ai_pipeline.translate_text(s, lang) for s in schemes]
+
+    # Map details to report dictionary
     minutes_dict = {
-        "summary": meeting.minutes.summary,
-        "topics": meeting.minutes.topics,
-        "schemes": meeting.minutes.schemes,
+        "summary": summary,
+        "topics": topics,
+        "schemes": schemes,
         "budget_summary": meeting.minutes.budget_summary,
         "digital_hash": meeting.minutes.digital_hash,
-        "action_items": [{"title": a.title, "department": a.department, "responsible_person": a.responsible_person, "deadline": str(a.deadline)} for a in meeting.action_items],
-        "votes": [{"proposal_title": v.proposal_title, "votes_for": v.votes_for, "votes_against": v.votes_against, "votes_abstain": v.votes_abstain} for v in meeting.votes]
+        "action_items": [
+            {
+                "title": ai_pipeline.translate_text(a.title, lang) if lang != "original" else a.title,
+                "department": ai_pipeline.translate_text(a.department, lang) if lang != "original" else a.department,
+                "responsible_person": ai_pipeline.translate_text(a.responsible_person, lang) if lang != "original" else a.responsible_person,
+                "deadline": str(a.deadline)
+            }
+            for a in meeting.action_items
+        ],
+        "votes": [
+            {
+                "proposal_title": ai_pipeline.translate_text(v.proposal_title, lang) if lang != "original" else v.proposal_title,
+                "votes_for": v.votes_for,
+                "votes_against": v.votes_against,
+                "votes_abstain": v.votes_abstain
+            }
+            for v in meeting.votes
+        ]
     }
+
+    filename_prefix = f"minutes_meeting_{meeting_id}_{lang}" if lang != "original" else f"minutes_meeting_{meeting_id}"
 
     if format == "json":
         return Response(
-            content=json.dumps(minutes_dict, indent=2),
+            content=json.dumps(minutes_dict, indent=2, ensure_ascii=False),
             media_type="application/json",
-            headers={"Content-Disposition": f"attachment; filename=minutes_meeting_{meeting_id}.json"}
+            headers={"Content-Disposition": f"attachment; filename={filename_prefix}.json"}
         )
     
-    # Text Govt layout fallback
-    report_text = audit_service.export_to_text_report(meeting.title, minutes_dict)
+    # Text Govt layout fallback with target language
+    report_text = audit_service.export_to_text_report(meeting.title, minutes_dict, lang)
     return Response(
-        content=report_text,
-        media_type="text/plain",
-        headers={"Content-Disposition": f"attachment; filename=minutes_meeting_{meeting_id}.txt"}
+        content=report_text.encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={filename_prefix}.txt"}
     )

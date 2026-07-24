@@ -1421,14 +1421,14 @@ function VerifyPage() {
                 <span className="text-[10.5px] font-mono text-emerald-600 dark:text-emerald-400 font-bold break-all block">{minutesData.digital_hash}</span>
                 <div className="pt-2 flex justify-center gap-4">
                   <a 
-                    href={minutesApi.exportUrl(parseInt(selectedMeetingId), "text")} 
+                    href={minutesApi.exportUrl(parseInt(selectedMeetingId), "text", translationLanguage)} 
                     download 
                     className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-1"
                   >
                     <Download className="h-3 w-3" /> Export Govt TXT
                   </a>
                   <a 
-                    href={minutesApi.exportUrl(parseInt(selectedMeetingId), "json")} 
+                    href={minutesApi.exportUrl(parseInt(selectedMeetingId), "json", translationLanguage)} 
                     download 
                     className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-1"
                   >
@@ -1460,7 +1460,7 @@ function VerifyPage() {
                     disabled={saveLoading || finalizeLoading}
                     className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 shadow-md hover:shadow-emerald-650/15 transition-all"
                   >
-                    <Lock className="h-3.5 w-3.5" /> Sign & Finalize Ledger
+                    <Lock className="h-3.5 w-3.5" /> Approve & Sign Ledger
                   </button>
                 </div>
               )
