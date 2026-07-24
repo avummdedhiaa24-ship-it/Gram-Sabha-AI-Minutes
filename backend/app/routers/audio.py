@@ -18,6 +18,14 @@ def run_processing_pipeline(meeting_id: int, file_path: str, db: Session):
         if not meeting:
             return
         meeting.status = "processing"
+        
+        # Clear any stale transcripts, minutes, actions, votes, or translations
+        db.query(models.Transcript).filter(models.Transcript.meeting_id == meeting_id).delete()
+        db.query(models.Minutes).filter(models.Minutes.meeting_id == meeting_id).delete()
+        db.query(models.ActionItem).filter(models.ActionItem.meeting_id == meeting_id).delete()
+        db.query(models.Vote).filter(models.Vote.meeting_id == meeting_id).delete()
+        db.query(models.Translation).filter(models.Translation.meeting_id == meeting_id).delete()
+        
         db.commit()
 
         # 2. Noise reduction filter simulation
