@@ -5,6 +5,7 @@ from typing import List, Optional
 from app.core.database import get_db
 from app import models, schemas
 from app.services.rag import rag_service
+from app.services.ai_pipeline import ai_pipeline
 
 router = APIRouter(prefix="/chat", tags=["AI Chatbot (RAG)"])
 
@@ -16,33 +17,54 @@ def ask_chatbot(
     if not chat_req.messages:
         raise HTTPException(status_code=400, detail="Empty messages list")
 
-    # Get the latest user message
-    user_query = ""
-    for msg in reversed(chat_req.messages):
+    messages = chat_req.messages
+    latest_user_msg = ""
+    for msg in reversed(messages):
         if msg.role == "user":
-            user_query = msg.content
+            latest_user_msg = msg.content
             break
             
-    if not user_query:
+    if not latest_user_msg:
         raise HTTPException(status_code=400, detail="No user message found in history")
 
-    # 1. Search the local vector index using RAG service
-    semantic_matches = rag_service.search(user_query, limit=3)
+    # Check if the last assistant message in history was a language selector prompt
+    was_prompted_for_language = False
+    original_question = ""
     
-    # Optional filtering by meeting_id if provided in request
-    if chat_req.meeting_id:
-        semantic_matches = [m for m in semantic_matches if m["meeting_id"] == chat_req.meeting_id]
+    # Iterate backward
+    for i in range(len(messages) - 2, -1, -1):
+        msg = messages[i]
+        if msg.role == "assistant" and "In which language would you like me to answer?" in msg.content:
+            was_prompted_for_language = True
+            # Find the user question asked right before this assistant message
+            for j in range(i - 1, -1, -1):
+                if messages[j].role == "user":
+                    original_question = messages[j].content
+                    break
+            break
 
-    # 2. Formulate context block
-    context_str = ""
-    citations_res = []
-    if semantic_matches:
-        context_parts = []
-        for idx, match in enumerate(semantic_matches, 1):
-            context_parts.append(
-                f"[Source {idx}]: Meeting: {match['title']} (ID: {match['meeting_id']})\n"
-                f"Content segment: {match['text_segment']}"
-            )
+    if was_prompted_for_language and original_question:
+        # User is providing their language choice
+        lang_map = {
+            "hi": "hi", "hindi": "hi", "हिंदी": "hi",
+            "mr": "mr", "marathi": "mr", "मराठी": "mr",
+            "te": "te", "telugu": "te", "తెలుగు": "te",
+            "en": "en", "english": "en"
+        }
+        target_lang = "en"
+        clean_choice = latest_user_msg.strip().lower()
+        for k, v in lang_map.items():
+            if k in clean_choice:
+                target_lang = v
+                break
+        
+        # Search the database for the original question
+        semantic_matches = rag_service.search(original_question, limit=3)
+        if chat_req.meeting_id:
+            semantic_matches = [m for m in semantic_matches if m["meeting_id"] == chat_req.meeting_id]
+
+        citations_res = []
+        for match in semantic_matches:
             citations_res.append(
                 schemas.ChatCitation(
                     meeting_id=match["meeting_id"],
@@ -51,29 +73,51 @@ def ask_chatbot(
                     confidence=match["confidence"]
                 )
             )
-        context_str = "\n\n".join(context_parts)
-    else:
-        context_str = "No specific historical documents found matching the query."
 
-    # 3. Create response message text (answering based on the context block)
-    if semantic_matches:
-        top_match = semantic_matches[0]
-        # Dynamically formulate the answer based on the actual content of the retrieved documents
-        response_text = (
-            f"Based on the Gram Sabha meeting records, here is the answer: "
-            f"Under the session '{top_match['title']}', it was documented that: '{top_match['text_segment'].strip()}'. "
-        )
-        if len(semantic_matches) > 1 and semantic_matches[1]['title'] != top_match['title']:
-            response_text += f"Additionally, the meeting '{semantic_matches[1]['title']}' noted: '{semantic_matches[1]['text_segment'].strip()}'."
+        if semantic_matches:
+            top_match = semantic_matches[0]
+            # Generate the dynamic English base answer first
+            base_answer = (
+                f"Under the session '{top_match['title']}', it was documented that: '{top_match['text_segment'].strip()}'."
+            )
+            if len(semantic_matches) > 1 and semantic_matches[1]['title'] != top_match['title']:
+                base_answer += f" Additionally, the meeting '{semantic_matches[1]['title']}' noted: '{semantic_matches[1]['text_segment'].strip()}'."
+            
+            # Translate the final answer into the user's requested language
+            response_text = ai_pipeline.translate_text(base_answer, target_lang)
         else:
-            response_text += "Please refer to the source citations below for full verification and context."
-    else:
-        response_text = (
-            "I could not find any explicit decisions or discussions about that topic in the "
-            "archived Gram Sabha meetings. You can refine your search or look up recent circulars."
+            base_answer = "I could not find any explicit decisions or discussions about that topic."
+            response_text = ai_pipeline.translate_text(base_answer, target_lang)
+
+        return schemas.ChatResponse(
+            content=response_text,
+            citations=citations_res
         )
 
-    return schemas.ChatResponse(
-        content=response_text,
-        citations=citations_res
-    )
+    else:
+        # First question in a turn: prompt user for language selection
+        # Search the database for citations so they appear immediately
+        semantic_matches = rag_service.search(latest_user_msg, limit=3)
+        if chat_req.meeting_id:
+            semantic_matches = [m for m in semantic_matches if m["meeting_id"] == chat_req.meeting_id]
+
+        citations_res = []
+        for match in semantic_matches:
+            citations_res.append(
+                schemas.ChatCitation(
+                    meeting_id=match["meeting_id"],
+                    title=match["title"],
+                    text_segment=match["text_segment"],
+                    confidence=match["confidence"]
+                )
+            )
+
+        response_text = (
+            "I have located the relevant Gram Sabha files matching your query. "
+            "In which language would you like me to answer? Please reply with: English, Hindi (हिंदी), or Marathi (मराठी)."
+        )
+
+        return schemas.ChatResponse(
+            content=response_text,
+            citations=citations_res
+        )
