@@ -43,7 +43,8 @@ import {
   chatApi, 
   searchApi, 
   auditApi,
-  translationApi
+  translationApi,
+  attendanceApi
 } from "./lib/api";
 import { useTranslation } from "./lib/translations";
 
@@ -733,6 +734,30 @@ function RecordPage() {
     }
   };
 
+  const createQuickMeeting = async (): Promise<string | null> => {
+    const token = getAuthToken();
+    if (!token) return null;
+    try {
+      const now = new Date();
+      const title = `Gram Sabha Meeting - ${now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+      const isoNow = now.toISOString();
+      const newMeeting = await meetingsApi.create({
+        title,
+        date: isoNow,
+        scheduled_start: isoNow,
+        location: 'Gram Panchayat Hall',
+        agenda: 'Audio Upload Session',
+        agenda_pdf_url: ''
+      }, token);
+      setMeetings((prev: any[]) => [newMeeting, ...prev]);
+      setSelectedMeeting(String(newMeeting.id));
+      return String(newMeeting.id);
+    } catch (err: any) {
+      setError('Failed to auto-create meeting. Please go to Meetings & Check-in tab to create one first.');
+      return null;
+    }
+  };
+
   // Start live microphone recording
   const startRecording = async () => {
     setError("");
@@ -793,18 +818,27 @@ function RecordPage() {
 
   // Common upload logic (Blob or File)
   const handleAudioUpload = async (audioBlobOrFile: Blob | File) => {
-    if (!selectedMeeting) {
-      setError("Please choose a target meeting link.");
-      return;
-    }
     const token = getAuthToken();
     if (!token) return;
 
     setLoading(true);
-    setUploadStatus("Uploading audio buffer segment to Indic Pipeline...");
     setError("");
+
+    // Auto-create a meeting if none selected
+    let meetingIdStr = selectedMeeting;
+    if (!meetingIdStr) {
+      setUploadStatus("No meeting found — creating one automatically...");
+      const created = await createQuickMeeting();
+      if (!created) {
+        setLoading(false);
+        return;
+      }
+      meetingIdStr = created;
+    }
+
+    setUploadStatus("Uploading audio buffer segment to Indic Pipeline...");
     try {
-      const meetingId = parseInt(selectedMeeting);
+      const meetingId = parseInt(meetingIdStr);
       
       // Update meeting status to ongoing/processing
       await meetingsApi.updateStatus(meetingId, "ongoing", token);
@@ -974,14 +1008,24 @@ function RecordPage() {
             <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Target Meeting Link</label>
             <select 
               value={selectedMeeting}
-              onChange={(e) => setSelectedMeeting(e.target.value)}
+              onChange={async (e) => {
+                if (e.target.value === '__create__') {
+                  await createQuickMeeting();
+                } else {
+                  setSelectedMeeting(e.target.value);
+                }
+              }}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none font-medium"
             >
+              {meetings.length === 0 && <option value="">Auto-create meeting on upload ✓</option>}
               {meetings.map((m) => (
                 <option key={m.id} value={m.id}>{m.title}</option>
               ))}
-              {meetings.length === 0 && <option value="">No scheduled meetings available</option>}
+              <option value="__create__">＋ Create New Meeting Now</option>
             </select>
+            {meetings.length === 0 && (
+              <p className="text-xs text-indigo-500 mt-1 font-medium">✓ A meeting will be auto-created when you upload audio.</p>
+            )}
           </div>
 
           <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-850 pt-4">
@@ -1043,6 +1087,12 @@ function VerifyPage() {
   const [translationData, setTranslationData] = useState<any>(null);
   const [translationLoading, setTranslationLoading] = useState(false);
   const [leftTab, setLeftTab] = useState<"transcript" | "attendance">("transcript");
+
+  // Attendance manual add
+  const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [addAttendeeId, setAddAttendeeId] = useState("");
+  const [addAttendeeLoading, setAddAttendeeLoading] = useState(false);
+  const [addAttendeeError, setAddAttendeeError] = useState("");
 
   const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const lang = e.target.value;
@@ -1110,6 +1160,7 @@ function VerifyPage() {
     setTranslationLanguage("original");
     setTranslationData(null);
     setLeftTab("transcript");
+    setAddAttendeeError("");
     try {
       const detail = await meetingsApi.get(meetingId, token);
       setMeetingDetail(detail);
@@ -1122,11 +1173,38 @@ function VerifyPage() {
       setTopicsStr(JSON.stringify(minutes.topics || [], null, 2));
       setSchemesStr(JSON.stringify(minutes.schemes || [], null, 2));
       setBudgetStr(JSON.stringify(minutes.budget_summary || {}, null, 2));
+
+      // Load all users for attendance dropdown
+      try {
+        const users = await attendanceApi.listUsers(token);
+        setAllUsers(users);
+        if (users.length > 0) setAddAttendeeId(String(users[0].id));
+      } catch (_) {}
     } catch (err: any) {
       setError(err.message || "Failed to load minutes details.");
       setMinutesData(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddAttendee = async () => {
+    if (!selectedMeetingId || !addAttendeeId) return;
+    const token = getAuthToken();
+    setAddAttendeeLoading(true);
+    setAddAttendeeError("");
+    try {
+      await attendanceApi.checkin(parseInt(selectedMeetingId), {
+        user_id: parseInt(addAttendeeId),
+        method: "manual"
+      }, token);
+      // Reload meeting detail to refresh attendance list
+      const updated = await meetingsApi.get(parseInt(selectedMeetingId), token);
+      setMeetingDetail(updated);
+    } catch (err: any) {
+      setAddAttendeeError(err.message || "Failed to add attendee.");
+    } finally {
+      setAddAttendeeLoading(false);
     }
   };
 
@@ -1317,26 +1395,57 @@ function VerifyPage() {
               </>
             ) : (
               <div className="space-y-4 font-sans text-xs">
+                {/* Manual Add Attendee */}
+                <div className="flex gap-2 items-end border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Add Citizen (Manual Check-in)</label>
+                    <select
+                      value={addAttendeeId}
+                      onChange={(e) => setAddAttendeeId(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      {allUsers.length === 0 && <option value="">Loading users...</option>}
+                      {allUsers.map((u: any) => (
+                        <option key={u.id} value={u.id}>{u.full_name} ({u.role})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleAddAttendee}
+                    disabled={addAttendeeLoading || !addAttendeeId}
+                    className="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-lg disabled:opacity-50 transition-colors"
+                  >
+                    {addAttendeeLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                    Add
+                  </button>
+                </div>
+                {addAttendeeError && (
+                  <p className="text-xs text-rose-500 font-semibold">{addAttendeeError}</p>
+                )}
+
+                {/* Attendance Table */}
                 {meetingDetail?.attendance && meetingDetail.attendance.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="border-b border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-400 uppercase">
+                          <th className="pb-2">#</th>
                           <th className="pb-2">Name</th>
                           <th className="pb-2">Role</th>
                           <th className="pb-2">Social Group</th>
                           <th className="pb-2">Check-in Time</th>
-                          <th className="pb-2 text-right">Verification</th>
+                          <th className="pb-2 text-right">Method</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-600 dark:text-slate-300 font-medium">
-                        {meetingDetail.attendance.map((att: any) => (
+                        {meetingDetail.attendance.map((att: any, idx: number) => (
                           <tr key={att.id} className="hover:bg-slate-50/20">
-                            <td className="py-3 font-bold text-slate-800 dark:text-slate-100">{att.user.full_name}</td>
-                            <td className="py-3 capitalize text-slate-500">{att.user.role}</td>
-                            <td className="py-3 font-mono text-[10px] text-slate-450">{att.user.social_category}</td>
-                            <td className="py-3 text-[10px] text-slate-400">{new Date(att.checkin_time).toLocaleTimeString()}</td>
-                            <td className="py-3 text-right">
+                            <td className="py-2 text-slate-400 text-[10px]">{idx + 1}</td>
+                            <td className="py-2 font-bold text-slate-800 dark:text-slate-100">{att.user?.full_name ?? "—"}</td>
+                            <td className="py-2 capitalize text-slate-500">{att.user?.role ?? "—"}</td>
+                            <td className="py-2 font-mono text-[10px] text-slate-450">{att.user?.social_category ?? "—"}</td>
+                            <td className="py-2 text-[10px] text-slate-400">{new Date(att.checkin_time).toLocaleTimeString()}</td>
+                            <td className="py-2 text-right">
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-550/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                                 {att.method === "qr" ? "QR Scan" : "Manual"}
                               </span>
@@ -1345,11 +1454,12 @@ function VerifyPage() {
                         ))}
                       </tbody>
                     </table>
+                    <p className="text-[10px] text-slate-400 mt-2 font-semibold">Total: {meetingDetail.attendance.length} citizen(s) checked in</p>
                   </div>
                 ) : (
-                  <div className="py-10 text-center space-y-2">
+                  <div className="py-6 text-center space-y-2">
                     <Users className="h-8 w-8 text-slate-300 mx-auto" />
-                    <p className="text-xs text-slate-450 font-semibold italic">No citizen attendance records for this meeting.</p>
+                    <p className="text-xs text-slate-450 font-semibold italic">No citizens checked in yet. Use the form above to add attendees manually.</p>
                   </div>
                 )}
               </div>

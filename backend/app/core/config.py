@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     AI_MOCK_MODE: bool = os.getenv("AI_MOCK_MODE", "True").lower() == "true"
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
     class Config:
         case_sensitive = True

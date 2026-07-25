@@ -174,3 +174,18 @@ export const translationApi = {
     return apiRequest(`/translation/${meetingId}/${langCode}`, "POST", null, token);
   },
 };
+
+// Attendance
+export const attendanceApi = {
+  checkin: (meetingId: number, data: { user_id: number; method: string; gps_lat?: number; gps_lng?: number }, token?: string | null) => {
+    return apiRequest(`/attendance/${meetingId}`, "POST", data, token);
+  },
+  list: (meetingId: number, token?: string | null) => {
+    return apiRequest(`/meetings/${meetingId}`, "GET", null, token)
+      .then((d: any) => d.attendance || []);
+  },
+  listUsers: (token?: string | null) => {
+    return apiRequest(`/auth/users`, "GET", null, token);
+  },
+};
+
