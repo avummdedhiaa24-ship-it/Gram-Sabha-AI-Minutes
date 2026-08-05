@@ -118,20 +118,24 @@ class AIPipelineService:
                     chunks = result.get("chunks", [])
 
                     if raw_text:
-                        # ── SMART SPEAKER CHANGE DETECTION ──────────────────
-                        # Whisper does NOT do speaker diarization.
-                        # We detect speaker changes using SILENCE GAPS between chunks:
-                        #   - Gap >= 1.5s  → likely a new speaker stepped in
-                        #   - Gap <  1.5s  → same speaker continuing
-                        # Speaker numbers increment each time a change is detected.
-                        SILENCE_GAP_THRESHOLD = 1.5  # seconds
+                        # ── MULTI-SIGNAL SPEAKER DIARIZATION & TURN DETECTION ───
+                        # Detect speaker changes using:
+                        # 1. Natural Speech Pauses (gap >= 0.6s)
+                        # 2. Dialogue & Topic Shift Cues ("First topic", "Second topic", "Secretary", "Sarpanch", "We propose", "vote", "approved")
+                        # 3. Maximum Turn Duration (~18s cap per speaker turn)
                         SPEAKER_ROLE_LABELS = [
                             "Secretary",
                             "Sarpanch",
                             "Citizen A",
+                            "Ward Member",
                             "Citizen B",
-                            "Citizen C",
-                            "Officer",
+                            "Gram Rozgar Sevak",
+                        ]
+
+                        SPEAKER_SHIFT_CUES = [
+                            r"\bfirst topic\b", r"\bsecond topic\b", r"\bthird topic\b", r"\bfourth topic\b",
+                            r"\bmy name is\b", r"\bi am\b", r"\bwe propose\b", r"\bsecretary\b", r"\bsarpanch\b",
+                            r"\bproposal for\b", r"\ball members\b", r"\bthank you\b", r"\bvote\b", r"\bapproved\b"
                         ]
 
                         diarized = []
@@ -147,18 +151,26 @@ class AIPipelineService:
                                 prev_end = end
                                 continue
 
-                            # Detect speaker change by silence gap
                             gap = start - prev_end
-                            if diarized and gap >= SILENCE_GAP_THRESHOLD:
-                                current_speaker_idx += 1  # New speaker detected
+                            text_lower = text.lower()
+
+                            # Detect speaker change
+                            is_pause = (gap >= 0.6)
+                            has_cue = any(re.search(cue, text_lower) for cue in SPEAKER_SHIFT_CUES)
+                            turn_exceeded = bool(diarized and (end - diarized[-1]["start"] >= 18.0))
+
+                            if diarized and (is_pause or has_cue or turn_exceeded):
+                                if len(text.split()) >= 2 or is_pause:
+                                    current_speaker_idx += 1
 
                             role = SPEAKER_ROLE_LABELS[current_speaker_idx % len(SPEAKER_ROLE_LABELS)]
                             speaker_label = f"Speaker {current_speaker_idx + 1} ({role})"
 
-                            # Merge into previous segment if same speaker and gap < 0.5s
+                            # Merge into previous segment if same speaker and continuous (< 0.4s gap)
                             if (diarized
                                     and diarized[-1]["speaker"] == speaker_label
-                                    and gap < 0.5):
+                                    and gap < 0.4
+                                    and not has_cue):
                                 diarized[-1]["text"] += " " + text
                                 diarized[-1]["end"] = round(end, 1)
                             else:
