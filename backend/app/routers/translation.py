@@ -12,31 +12,24 @@ router = APIRouter(prefix="/translation", tags=["Translation"])
 officer_roles = ["Secretary", "Gram Sabha Moderator", "District Officer", "State Officer", "Admin"]
 is_officer = RoleChecker(officer_roles)
 
-@router.post("/{meeting_id}/{lang_code}", response_model=schemas.TranslationResponse)
-def trigger_translation(
-    meeting_id: int,
-    lang_code: str,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(is_officer)
-):
+def generate_translation_for_meeting(meeting_id: int, lang_code: str, db: Session) -> models.Translation:
     meeting = db.query(models.Meeting).filter(models.Meeting.id == meeting_id).first()
-    if not meeting or not meeting.minutes:
-        raise HTTPException(status_code=404, detail="Meeting or finalized minutes not found")
+    if not meeting:
+        raise HTTPException(status_code=404, detail="Meeting not found")
 
-    # Check if translation already exists
+    # Purge existing stale translation row if present
     existing = db.query(models.Translation).filter(
         models.Translation.meeting_id == meeting_id,
         models.Translation.language == lang_code
     ).first()
-    
     if existing:
-        return existing
+        db.delete(existing)
+        db.commit()
 
-    # Generate translations using AI pipeline
-    translated_summary = ai_pipeline.translate_text(meeting.minutes.summary, lang_code)
+    summary_text = meeting.minutes.summary if meeting.minutes else (meeting.description or meeting.title)
+    translated_summary = ai_pipeline.translate_text(summary_text, lang_code)
     translated_agenda = ai_pipeline.translate_text(meeting.agenda or "", lang_code)
-    
-    # Translate transcript segments if transcript exists
+
     translated_segments = []
     if meeting.transcripts and meeting.transcripts.diarized_json:
         for seg in meeting.transcripts.diarized_json:
@@ -59,6 +52,15 @@ def trigger_translation(
     db.refresh(trans_rec)
     return trans_rec
 
+@router.post("/{meeting_id}/{lang_code}", response_model=schemas.TranslationResponse)
+def trigger_translation(
+    meeting_id: int,
+    lang_code: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(is_officer)
+):
+    return generate_translation_for_meeting(meeting_id, lang_code, db)
+
 @router.get("/{meeting_id}/{lang_code}", response_model=schemas.TranslationResponse)
 def get_translation(
     meeting_id: int,
@@ -69,6 +71,12 @@ def get_translation(
         models.Translation.meeting_id == meeting_id,
         models.Translation.language == lang_code
     ).first()
-    if not trans:
-        raise HTTPException(status_code=404, detail=f"Translation for language '{lang_code}' not found.")
-    return trans
+
+    # Check if trans exists and is not stale mock data
+    if trans and trans.transcript_translated_json:
+        first_seg_text = trans.transcript_translated_json[0].get("text", "") if len(trans.transcript_translated_json) > 0 else ""
+        if "[Prod Translated" not in first_seg_text and "[MOCK" not in first_seg_text:
+            return trans
+
+    # If missing or stale mock data, generate clean translation on-the-fly
+    return generate_translation_for_meeting(meeting_id, lang_code, db)

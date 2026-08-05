@@ -825,17 +825,15 @@ class AIPipelineService:
         if has_replacements:
             return remaining_text
 
-        # Fallback if text is not in catalog (for dynamically created text)
-        if self.mock_mode:
-            translations = {
-                "hi": f"[HINDI TRANSLATION]: {text}",
-                "mr": f"[MARATHI TRANSLATION]: {text}",
-                "te": f"[TELUGU TRANSLATION]: {text}",
-                "en": f"[ENGLISH TRANSLATION]: {text}"
-            }
-            return translations.get(target_lang, f"[MOCK-{target_lang}]: {text}")
-        else:
-            # Prod mode uses standard service translation
-            return f"[Prod Translated {target_lang}]: {text}"
+        # Fallback for dynamic transcribed text: real translation using deep_translator
+        try:
+            from deep_translator import GoogleTranslator
+            translated = GoogleTranslator(source='auto', target=target_lang).translate(text)
+            if translated and len(translated.strip()) > 0:
+                return translated
+        except Exception as e:
+            logger.warning(f"GoogleTranslator failed for lang {target_lang}: {e}")
+
+        return text
 
 ai_pipeline = AIPipelineService()
