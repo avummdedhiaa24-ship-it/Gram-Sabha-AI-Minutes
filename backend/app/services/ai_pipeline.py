@@ -3,8 +3,8 @@ import json
 import logging
 import os
 import re
-from typing import List, Dict, Any, Tuple
 from app.core.config import settings
+from app.services.bhashini import bhashini_service
 
 # Ensure Homebrew path is in environment PATH
 path_env = os.environ.get("PATH", "")
@@ -232,15 +232,25 @@ class AIPipelineService:
         try:
             if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
                 effective_audio_path = self._convert_to_wav(file_path)
+
+                # Primary: Bhashini Government ASR API if configured
+                bhashini_raw = None
+                if bhashini_service.is_configured():
+                    bhashini_raw = bhashini_service.transcribe(effective_audio_path, source_lang=language)
+
                 asr = self.get_asr_pipeline()
-                if asr is not None:
-                    result = asr(
-                        effective_audio_path,
-                        return_timestamps=True,
-                        generate_kwargs={"language": language if language in ["en", "hi", "mr", "te"] else "en"}
-                    )
-                    raw_text = result.get("text", "").strip()
-                    chunks = result.get("chunks", [])
+                if asr is not None or bhashini_raw:
+                    if bhashini_raw:
+                        raw_text = bhashini_raw
+                        chunks = []
+                    else:
+                        result = asr(
+                            effective_audio_path,
+                            return_timestamps=True,
+                            generate_kwargs={"language": language if language in ["en", "hi", "mr", "te"] else "en"}
+                        )
+                        raw_text = result.get("text", "").strip()
+                        chunks = result.get("chunks", [])
 
                     if raw_text:
                         # 1. Primary: True Acoustic MFCC Voice Clustering
@@ -886,7 +896,13 @@ class AIPipelineService:
         if has_replacements:
             return remaining_text
 
-        # Fallback for dynamic transcribed text: real translation using deep_translator
+        # 1. Primary: Try Bhashini MeitY NMT Government Translation Service if configured
+        if bhashini_service.is_configured():
+            bhashini_res = bhashini_service.translate(text, source_lang="en", target_lang=target_lang)
+            if bhashini_res:
+                return bhashini_res
+
+        # 2. Secondary fallback for dynamic transcribed text: deep_translator
         try:
             from deep_translator import GoogleTranslator
             translated = GoogleTranslator(source='auto', target=target_lang).translate(text)

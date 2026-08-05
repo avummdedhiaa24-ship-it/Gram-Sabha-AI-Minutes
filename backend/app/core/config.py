@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
 
+    # Bhashini Government Indic AI Settings
+    BHASHINI_USER_ID: str = os.getenv("BHASHINI_USER_ID", "")
+    BHASHINI_API_KEY: str = os.getenv("BHASHINI_API_KEY", "")
+    BHASHINI_PIPELINE_ID: str = os.getenv("BHASHINI_PIPELINE_ID", "64392f08f9c26c60e7e39f94")
+
     class Config:
         case_sensitive = True
 
