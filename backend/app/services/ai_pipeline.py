@@ -22,9 +22,9 @@ class AIPipelineService:
 
     @classmethod
     def get_asr_pipeline(cls):
-        """Lazily load the local Whisper ASR pipeline (defaults to openai/whisper-medium). Cached after first load."""
+        """Lazily load the local Whisper ASR pipeline (defaults to openai/whisper-small). Cached after first load."""
         if cls._asr_pipeline is None:
-            model_name = getattr(settings, "WHISPER_MODEL_NAME", "openai/whisper-medium")
+            model_name = getattr(settings, "WHISPER_MODEL_NAME", "openai/whisper-small")
             logger.info(f"Initializing local ASR pipeline model '{model_name}' on CPU...")
             try:
                 from transformers import pipeline as hf_pipeline

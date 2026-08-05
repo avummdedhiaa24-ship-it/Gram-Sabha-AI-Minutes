@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     
     # AI Settings
     AI_MOCK_MODE: bool = os.getenv("AI_MOCK_MODE", "False").lower() == "true"
-    WHISPER_MODEL_NAME: str = os.getenv("WHISPER_MODEL_NAME", "openai/whisper-medium")
+    WHISPER_MODEL_NAME: str = os.getenv("WHISPER_MODEL_NAME", "openai/whisper-small")
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
