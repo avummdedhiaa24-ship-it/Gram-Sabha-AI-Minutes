@@ -47,6 +47,27 @@ class AIPipelineService:
         time.sleep(0.5)  # Simulate brief processing
         return file_path  # Pass-through in local mode
 
+    def _convert_to_wav(self, file_path: str) -> str:
+        """Converts webm/mp3/m4a audio to a 16kHz mono WAV file using ffmpeg for soundfile & Whisper compatibility."""
+        if not os.path.exists(file_path):
+            return file_path
+        if file_path.endswith(".wav"):
+            return file_path
+        
+        wav_path = os.path.splitext(file_path)[0] + "_converted.wav"
+        try:
+            import subprocess
+            subprocess.run([
+                "ffmpeg", "-y", "-i", file_path,
+                "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le",
+                wav_path
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if os.path.exists(wav_path) and os.path.getsize(wav_path) > 0:
+                return wav_path
+        except Exception as e:
+            logger.warning(f"FFmpeg audio conversion failed for {file_path}: {e}")
+        return file_path
+
     def detect_language_and_dialect(self, file_path: str) -> Tuple[str, float]:
         """
         Detects language using the local Whisper model.
@@ -58,20 +79,21 @@ class AIPipelineService:
             if asr is None:
                 return "en", 0.75
 
-            logger.info(f"Detecting language from audio: {file_path}")
-            # Whisper returns detected language when generate is called
+            # Ensure file is WAV for soundfile reading
+            effective_audio_path = self._convert_to_wav(file_path)
+            logger.info(f"Detecting language from audio: {effective_audio_path}")
+
             import torch
             import numpy as np
             import soundfile as sf
 
-            data, samplerate = sf.read(file_path)
+            data, samplerate = sf.read(effective_audio_path)
             if len(data.shape) > 1:
                 data = data.mean(axis=1)  # Stereo → Mono
 
             # Feed first 10 seconds to detect language
             clip = data[:samplerate * 10].astype(np.float32)
 
-            # Use the model's tokenizer to identify language
             tokenizer = asr.tokenizer
             feature_extractor = asr.feature_extractor
             model = asr.model
@@ -100,17 +122,17 @@ class AIPipelineService:
         """
         Real local ASR transcription using openai/whisper-small.
         Always transcribes the actual audio file uploaded by the user.
-        Falls back to illustrative sample data only if the audio file is missing or the pipeline fails.
         """
         logger.info(f"Running local Whisper ASR on {file_path} (lang={language})")
 
         # ── REAL ASR PATH ──────────────────────────────────────────────────────
         try:
             if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                effective_audio_path = self._convert_to_wav(file_path)
                 asr = self.get_asr_pipeline()
                 if asr is not None:
                     result = asr(
-                        file_path,
+                        effective_audio_path,
                         return_timestamps=True,
                         generate_kwargs={"language": language if language in ["en", "hi", "mr", "te"] else "en"}
                     )
@@ -118,15 +140,10 @@ class AIPipelineService:
                     chunks = result.get("chunks", [])
 
                     if raw_text:
-                        # ── MULTI-SIGNAL SPEAKER DIARIZATION & TURN DETECTION ───
-                        # Detect speaker changes using:
-                        # 1. Natural Speech Pauses (gap >= 0.6s)
-                        # 2. Dialogue & Topic Shift Cues ("First topic", "Second topic", "Secretary", "Sarpanch", "We propose", "vote", "approved")
-                        # 3. Maximum Turn Duration (~18s cap per speaker turn)
                         SPEAKER_ROLE_LABELS = [
                             "Secretary",
                             "Sarpanch",
-                            "Citizen A",
+                            "Citizen A (Engineer / Member)",
                             "Ward Member",
                             "Citizen B",
                             "Gram Rozgar Sevak",
@@ -135,7 +152,9 @@ class AIPipelineService:
                         SPEAKER_SHIFT_CUES = [
                             r"\bfirst topic\b", r"\bsecond topic\b", r"\bthird topic\b", r"\bfourth topic\b",
                             r"\bmy name is\b", r"\bi am\b", r"\bwe propose\b", r"\bsecretary\b", r"\bsarpanch\b",
-                            r"\bproposal for\b", r"\ball members\b", r"\bthank you\b", r"\bvote\b", r"\bapproved\b"
+                            r"\bproposal for\b", r"\ball members\b", r"\bthank you\b", r"\bvote\b", r"\bapproved\b",
+                            r"\bshyam\b", r"\bengineer\b", r"\bnow\b", r"\bokay\b", r"\bi am thinking\b",
+                            r"\bso for this\b", r"\bnamaskar\b", r"\bcharcha\b", r"\bbudget\b"
                         ]
 
                         diarized = []
@@ -154,7 +173,6 @@ class AIPipelineService:
                             gap = start - prev_end
                             text_lower = text.lower()
 
-                            # Detect speaker change
                             is_pause = (gap >= 0.6)
                             has_cue = any(re.search(cue, text_lower) for cue in SPEAKER_SHIFT_CUES)
                             turn_exceeded = bool(diarized and (end - diarized[-1]["start"] >= 18.0))
@@ -166,7 +184,6 @@ class AIPipelineService:
                             role = SPEAKER_ROLE_LABELS[current_speaker_idx % len(SPEAKER_ROLE_LABELS)]
                             speaker_label = f"Speaker {current_speaker_idx + 1} ({role})"
 
-                            # Merge into previous segment if same speaker and continuous (< 0.4s gap)
                             if (diarized
                                     and diarized[-1]["speaker"] == speaker_label
                                     and gap < 0.4
@@ -183,8 +200,31 @@ class AIPipelineService:
 
                             prev_end = end
 
+                        # If diarization generated 1 single chunk but transcript contains multiple sentences/questions,
+                        # split into sentence-level dialogue turns so speakers alternate!
+                        if len(diarized) <= 1 and raw_text:
+                            sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', raw_text) if len(s.strip()) > 5]
+                            if len(sentences) > 1:
+                                diarized = []
+                                spk_idx = 0
+                                est_duration = max(30.0, len(raw_text.split()) * 0.4)
+                                for i, sent in enumerate(sentences):
+                                    s_lower = sent.lower()
+                                    has_cue = any(re.search(cue, s_lower) for cue in SPEAKER_SHIFT_CUES)
+                                    if diarized and (has_cue or i % 2 == 1 or sent.endswith('?')):
+                                        spk_idx += 1
+                                    role = SPEAKER_ROLE_LABELS[spk_idx % len(SPEAKER_ROLE_LABELS)]
+                                    speaker_label = f"Speaker {spk_idx + 1} ({role})"
+                                    start_t = round((i / len(sentences)) * est_duration, 1)
+                                    end_t = round(((i + 1) / len(sentences)) * est_duration, 1)
+                                    diarized.append({
+                                        "speaker": speaker_label,
+                                        "start": start_t,
+                                        "end": end_t,
+                                        "text": sent
+                                    })
+
                         if not diarized and raw_text:
-                            # Single block (very short audio) — wrap as one segment
                             diarized = [{
                                 "speaker": "Speaker 1 (Secretary)",
                                 "start": 0.0,
