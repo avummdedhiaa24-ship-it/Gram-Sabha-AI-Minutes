@@ -6,8 +6,8 @@ COPY package.json ./
 RUN npm install
 
 COPY . .
+RUN npm run build
 
 EXPOSE 3000
 
-# Run in dev mode for testing hot-reloads locally
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "start"]

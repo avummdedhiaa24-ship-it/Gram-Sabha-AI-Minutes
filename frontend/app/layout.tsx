@@ -18,6 +18,7 @@ import {
   Globe
 } from "lucide-react";
 import AuthView from "./components/AuthView";
+import DevToolsProtector from "./components/DevToolsProtector";
 import { authApi } from "./lib/api";
 import { useTranslation, LanguageCode } from "./lib/translations";
 
@@ -134,6 +135,7 @@ export default function RootLayout({
     return (
       <html lang="en" className={darkMode ? "dark" : ""}>
         <body className="bg-slate-900 min-h-screen">
+          <DevToolsProtector />
           <AuthView onAuthSuccess={handleAuthSuccess} />
         </body>
       </html>
@@ -146,6 +148,7 @@ export default function RootLayout({
   return (
     <html lang={currentLanguage} className={darkMode ? "dark" : ""}>
       <body className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-50 transition-colors duration-200 min-h-screen flex flex-col">
+        <DevToolsProtector />
         {/* Government Style Header Banner */}
         <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40 shadow-sm">
           <div className="bg-gradient-to-r from-amber-500 via-white to-emerald-600 h-1.5 w-full"></div>

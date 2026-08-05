@@ -2,10 +2,12 @@ import os
 import uuid
 import shutil
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app import models, schemas
+from app.routers.auth import get_current_user
 from app.services.ai_pipeline import ai_pipeline
 from app.services.rag import rag_service
 
@@ -119,10 +121,24 @@ async def upload_audio(
     with open(dest_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    meeting.audio_url = f"/uploads/{unique_filename}"
+    meeting.audio_url = f"/api/v1/audio/stream/{unique_filename}"
     db.commit()
 
     # Trigger async processing background tasks
     background_tasks.add_task(run_processing_pipeline, meeting_id, dest_path, db)
 
     return meeting
+
+@router.get("/stream/{filename}")
+def stream_audio(
+    filename: str,
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Authenticated streaming endpoint for audio recordings.
+    Only logged-in users with a valid JWT/HttpOnly cookie can stream audio.
+    """
+    file_path = os.path.join(settings.UPLOAD_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Audio recording not found")
+    return FileResponse(file_path, media_type="audio/mpeg")
