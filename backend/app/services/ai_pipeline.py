@@ -80,9 +80,14 @@ class AIPipelineService:
             input_features = inputs.input_features
 
             with torch.no_grad():
-                predicted_ids = model.detect_language(input_features)
+                predicted = model.detect_language(input_features)
+                if isinstance(predicted, tuple):
+                    token_id = predicted[0]
+                elif hasattr(predicted, "item"):
+                    token_id = predicted.item()
+                else:
+                    token_id = int(predicted[0])
 
-            token_id = predicted_ids[0][0].item()
             lang_token = tokenizer.decode([token_id]).strip("<>")
             conf = 0.92 if lang_token in ["hi", "mr", "te", "en"] else 0.75
             logger.info(f"Detected language: {lang_token} (conf={conf})")

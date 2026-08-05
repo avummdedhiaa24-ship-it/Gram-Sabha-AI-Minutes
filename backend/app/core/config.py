@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL_NAME: str = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
     
     # AI Settings
-    AI_MOCK_MODE: bool = os.getenv("AI_MOCK_MODE", "True").lower() == "true"
+    AI_MOCK_MODE: bool = os.getenv("AI_MOCK_MODE", "False").lower() == "true"
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     HUGGINGFACE_API_KEY: str = os.getenv("HUGGINGFACE_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
